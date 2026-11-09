@@ -42,7 +42,7 @@ Socket.IO.
   diffs, the pinned task list (`update_plan`), turn summaries, pasted text and thinking.
 - **Side pane**: the git changes of the session folder, a read-only file browser and
   session details.
-- **Plan usage**: your 5-hour and weekly limits, with their reset times, as Claude Code
+- **Plan usage**: your 5-hour and weekly limits with their reset times, and usage credits, as Claude Code
   reports them on each turn run from the app, or on demand with the refresh button.
 - **No clash with Claude Desktop**: a session still open in another Claude process is
   never written to. Replying to it continues it in a copy (a fork), with its full history.

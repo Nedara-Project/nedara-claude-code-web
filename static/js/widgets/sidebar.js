@@ -33,12 +33,12 @@ function dayBucket(updated) {
 
 const WINDOW_LABELS = {
     five_hour: '5-hour limit',
-    seven_day: 'Weekly limit',
+    seven_day: 'Weekly · all models',
     seven_day_opus: 'Weekly · Opus',
     seven_day_sonnet: 'Weekly · Sonnet',
     seven_day_oauth_apps: 'Weekly · Apps',
     overage: 'Extra usage',
-    extra_usage: 'Extra usage',
+    extra_usage: 'Usage credits',
 };
 
 function resetText(epoch) {
@@ -49,11 +49,15 @@ function resetText(epoch) {
     return sameDay ? `Resets at ${time}` : `Resets ${date.toLocaleDateString(undefined, { weekday: 'short' })} ${time}`;
 }
 
+function planName(plan) {
+    return plan ? `${plan.charAt(0).toUpperCase()}${plan.slice(1)} plan` : 'Plan usage';
+}
+
 function spentText(spent) {
     const money = (amount) => (spent.currency
         ? new Intl.NumberFormat(undefined, { style: 'currency', currency: spent.currency }).format(amount)
         : amount.toFixed(2));
-    return `${money(spent.used)} of ${money(spent.limit)} this month`;
+    return `${money(spent.used)} of ${money(spent.limit)}`;
 }
 
 function statusHtml(session) {
@@ -200,10 +204,12 @@ export function createSidebar() {
                 }
                 return render('usage_row', {
                     label: WINDOW_LABELS[name] || name.replace(/_/g, ' '),
-                    percent: limited ? 'Limit reached' : (w.utilization == null ? '—' : `${Math.round(ratio * 100)}%`),
+                    percent: limited ? 'Limit reached'
+                        : w.spent ? spentText(w.spent)
+                        : (w.utilization == null ? '—' : `${Math.round(ratio * 100)}%`),
                     width: `${Math.round(ratio * 100)}%`,
                     tone, bar,
-                    resets: w.spent ? spentText(w.spent) : resetText(w.resets_at),
+                    resets: resetText(w.resets_at),
                 });
             }).join('');
             const age = relativeTime(usage.updated_at);
@@ -212,7 +218,7 @@ export function createSidebar() {
             section.html(render('usage_block', {
                 rows,
                 refresh,
-                source: `Plan usage · ${origin} ${when}${usage.using_overage ? ' · extra usage on' : ''}`,
+                source: `${planName(usage.plan)} · ${origin} ${when}${usage.using_overage ? ' · extra usage on' : ''}`,
                 sourceTitle: usage.source === 'refresh'
                     ? 'Read from Claude Code with the refresh button'
                     : 'Claude Code reports plan usage on each turn run from this app',

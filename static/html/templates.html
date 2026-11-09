@@ -45,15 +45,15 @@
 </template>
 
 <template id="usage_row">
-    <div class="space-y-1">
+    <div class="space-y-1.5">
         <div class="flex items-baseline gap-2 text-[11.5px]">
-            <span class="font-medium text-ink-2">{{label}}</span>
-            <span class="ml-auto tabular-nums font-semibold {{tone}}">{{percent}}</span>
+            <span class="min-w-0 truncate font-medium text-ink-2">{{label}}</span>
+            <span class="ml-auto shrink-0 whitespace-nowrap text-[11px] text-ink-3">{{resets}}</span>
+            <span class="shrink-0 tabular-nums font-semibold {{tone}}">{{percent}}</span>
         </div>
         <div class="h-1 rounded-full bg-fill overflow-hidden">
             <div class="usage-bar h-full rounded-full transition-[width] duration-500 ease-apple {{bar}}" data-width="{{width}}"></div>
         </div>
-        <div class="text-[11px] text-ink-3">{{resets}}</div>
     </div>
 </template>
 

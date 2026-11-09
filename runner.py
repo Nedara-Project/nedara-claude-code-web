@@ -119,6 +119,7 @@ def usage_from_report(report):
         'using_overage': False,
         'windows': windows,
         'source': 'refresh',
+        'plan': report.get('subscription_type'),
         'updated_at': time.time(),
     }
 

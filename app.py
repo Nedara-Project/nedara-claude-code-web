@@ -114,6 +114,8 @@ class UsageStore:
         self.usage = json.loads(path.read_text()) if path.exists() else None
 
     def update(self, usage):
+        if not usage.get('plan') and self.usage:
+            usage['plan'] = self.usage.get('plan')  # turns do not report it, refreshes do
         self.usage = usage
         write_private(self.path, json.dumps(usage))
         socketio.emit('usage', usage, to='app')
