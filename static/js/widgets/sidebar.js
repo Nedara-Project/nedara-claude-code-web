@@ -36,6 +36,7 @@ const WINDOW_LABELS = {
     seven_day: 'Weekly limit',
     seven_day_opus: 'Weekly · Opus',
     seven_day_sonnet: 'Weekly · Sonnet',
+    seven_day_oauth_apps: 'Weekly · Apps',
     overage: 'Extra usage',
 };
 
@@ -158,19 +159,21 @@ export function createSidebar() {
             list.html(html);
         },
 
-        /** Plan usage from the last turn run here; hidden until one has reported it. */
+        /** Plan usage from the last turn run here or the last manual refresh. */
         renderUsage: function () {
             const usage = store.config.usage;
             const section = this.$selector.find('#usage');
+            const refresh = render('usage_refresh', { icon: icon('refresh', 'size-3.5') });
             const windows = Object.entries(usage?.windows || {})
                 .filter(([, w]) => w.utilization != null || w.resets_at);
             if (!windows.length) {
                 // Nothing measured yet: say where the numbers will come from.
                 section.html(render('usage_empty', {
-                    icon: icon('info', 'size-3.5 shrink-0'),
+                    icon: icon('info', 'size-3.5 shrink-0 mt-px'),
+                    refresh,
                     text: store.config.read_only
-                        ? 'Plan usage is reported on turns run from this app, which is read-only.'
-                        : 'Plan usage appears after your next message from the web.',
+                        ? 'Not measured yet. Refresh to read it from Claude Code.'
+                        : 'Not measured yet. Refresh, or send a message from the web.',
                 }));
                 section.removeClass('hidden');
                 return;
@@ -197,9 +200,14 @@ export function createSidebar() {
             }).join('');
             const age = relativeTime(usage.updated_at);
             const when = age === 'now' ? 'just now' : (/\d (min|h|d)$/.test(age) ? `${age} ago` : `on ${age}`);
+            const origin = usage.source === 'refresh' ? 'refreshed' : 'last web turn';
             section.html(render('usage_block', {
                 rows,
-                source: `Plan usage · last web turn ${when}${usage.using_overage ? ' · extra usage on' : ''}`,
+                refresh,
+                source: `Plan usage · ${origin} ${when}${usage.using_overage ? ' · extra usage on' : ''}`,
+                sourceTitle: usage.source === 'refresh'
+                    ? 'Read from Claude Code with the refresh button'
+                    : 'Claude Code reports plan usage on each turn run from this app',
             }));
             section.removeClass('hidden');
             // Widths are set from script: the CSP forbids inline style attributes.
@@ -250,6 +258,19 @@ export function createSidebar() {
 
         _onLogout: function () {
             postForm('/logout');
+        },
+
+        _onUsageRefresh: async function (ev) {
+            const button = ev.currentTarget;
+            button.disabled = true;
+            button.innerHTML = icon('spinner', 'size-3.5');
+            try {
+                const { usage } = await api('/api/usage/refresh', { method: 'POST' });
+                store.config.usage = usage;
+            } catch (err) {
+                toast(err.message, 'error');
+            }
+            this.renderUsage();
         },
 
         _onRevokeAll: async function () {

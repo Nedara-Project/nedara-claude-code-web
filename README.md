@@ -43,7 +43,7 @@ Socket.IO.
 - **Side pane**: the git changes of the session folder, a read-only file browser and
   session details.
 - **Plan usage**: your 5-hour and weekly limits, with their reset times, as Claude Code
-  reports them on each turn run from the app.
+  reports them on each turn run from the app, or on demand with the refresh button.
 - **No clash with Claude Desktop**: a session still open in another Claude process is
   never written to. Replying to it continues it in a copy (a fork), with its full history.
   See [Claude Desktop sessions](#claude-desktop-sessions-what-works-and-what-does-not)
@@ -150,6 +150,10 @@ CLI needs credentials of its own; Claude Desktop's sign-in is not shared with it
   systemd service: an `Environment=` line). Usage is then billed to that API key.
 
 If Claude is not signed in, it answers "Failed to authenticate" in the transcript.
+
+The refresh button of the plan usage meter reads the limits through the CLI's own login,
+without running a turn: a `claude setup-token` token cannot read them (it lacks the profile
+scope). To use the button with a token, sign the CLI in once as well (`claude auth login`).
 
 ## Running it as a service (systemd)
 
@@ -361,9 +365,10 @@ working on sessions Desktop does not hold, and starting new ones from any browse
 
 **Other differences**
 
-- The plan usage meter is refreshed by turns run from the web only: Claude Code reports
-  usage to the program that runs the turn, and turns run in Claude Desktop report to
-  Desktop. The meter says when it was last updated.
+- The plan usage meter is updated by turns run from the web, not by turns run in Claude
+  Desktop: Claude Code reports usage to the program that runs the turn. Use its refresh
+  button to read the current figures (see [Signing in to Claude](#signing-in-to-claude)).
+  The meter says when it was last updated.
 
 - Tools that only exist inside Claude Desktop (its task list, panes, side sessions…) are not
   available to sessions run from here. Their past calls still render.

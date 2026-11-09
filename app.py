@@ -115,7 +115,7 @@ class UsageStore:
 
     def update(self, usage):
         self.usage = usage
-        self.path.write_text(json.dumps(usage))
+        write_private(self.path, json.dumps(usage))
         socketio.emit('usage', usage, to='app')
 
 
@@ -488,6 +488,24 @@ def api_mode(session_id):
 def api_close(session_id):
     _call(runners.close(session_id))
     return jsonify(ok=True)
+
+
+usage_refresh = threading.Lock()
+
+
+@app.route('/api/usage/refresh', methods=['POST'])
+@login_required
+def api_usage_refresh():
+    if not usage_refresh.acquire(blocking=False):
+        return jsonify(error='A refresh is already running.'), 429
+    try:
+        usage, error = _call(runners.fetch_usage())
+    finally:
+        usage_refresh.release()
+    if error:
+        return error
+    usage_store.update(usage)
+    return jsonify(usage=usage)
 
 
 @app.route('/api/revoke-sessions', methods=['POST'])

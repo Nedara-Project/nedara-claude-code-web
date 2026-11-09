@@ -18,6 +18,8 @@ import threading
 import time
 import uuid
 from dataclasses import replace
+from datetime import datetime
+from pathlib import Path
 
 from claude_agent_sdk import (
     ClaudeAgentOptions,
@@ -72,6 +74,35 @@ def usage_from_rate_limit(info):
         'overage_status': info.overage_status,
         'using_overage': bool(raw.get('isUsingOverage')),
         'windows': windows,
+        'source': 'turn',
+        'updated_at': time.time(),
+    }
+
+
+def _epoch(iso):
+    try:
+        return datetime.fromisoformat(iso).timestamp() if iso else None
+    except ValueError:
+        return None
+
+
+def usage_from_report(report):
+    """Plan usage from the CLI's get_usage answer (utilization 0-100, ISO reset times)."""
+    windows = {
+        name: {
+            'utilization': w['utilization'] / 100 if w.get('utilization') is not None else None,
+            'resets_at': _epoch(w.get('resets_at')),
+        }
+        for name, w in (report.get('rate_limits') or {}).items() if isinstance(w, dict)
+    }
+    limited = next((name for name, w in windows.items() if (w['utilization'] or 0) >= 1), None)
+    return {
+        'status': 'rejected' if limited else 'allowed',
+        'limited_window': limited,
+        'overage_status': None,
+        'using_overage': False,
+        'windows': windows,
+        'source': 'refresh',
         'updated_at': time.time(),
     }
 
@@ -277,6 +308,34 @@ class RunnerManager:
             include_partial_messages=True,
             stderr=lambda line: log.debug('[claude %s] %s', runner.session_id[:8], line),
         )
+
+    async def fetch_usage(self):
+        """Plan usage read by the CLI without running a turn.
+
+        The CLI answers with its own login: a `claude setup-token` token lacks the
+        profile scope the usage endpoint needs, so it is not passed here.
+        """
+        client = ClaudeSDKClient(ClaudeAgentOptions(
+            cwd=str(Path.home()),
+            cli_path=self.config.claude_cli or None,
+            stderr=lambda line: log.debug('[claude usage] %s', line),
+        ))
+        try:
+            await asyncio.wait_for(client.connect(), 30)
+            # No public SDK method yet for this control request.
+            report = await asyncio.wait_for(
+                client._query._send_control_request({'subtype': 'get_usage', 'skip_behaviors': True}), 30,
+            )
+        except Exception as exc:
+            raise RunnerError(f'Claude Code did not answer the usage request: {exc or "timed out"}') from exc
+        finally:
+            await client.disconnect()
+        if not report.get('rate_limits_available'):
+            raise RunnerError(
+                'Plan limits need a full Claude Code login on this machine: run `claude auth login` there. '
+                'A `claude setup-token` token cannot read them.'
+            )
+        return usage_from_report(report)
 
     async def send(self, *, session_id=None, cwd, prompt, model='', effort='', permission_mode='', fork=False):
         """Send a prompt; start, resume or fork the session as needed. Returns the session id."""

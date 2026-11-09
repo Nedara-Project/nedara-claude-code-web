@@ -59,13 +59,21 @@
 
 <template id="usage_empty">
     <div class="flex items-start gap-2 text-[11.5px] text-ink-3">
-        {{{icon}}}<span><span class="font-medium text-ink-2">Plan usage</span> · {{text}}</span>
+        {{{icon}}}<span class="flex-1"><span class="font-medium text-ink-2">Plan usage</span> · {{text}}</span>
+        {{{refresh}}}
     </div>
 </template>
 
 <template id="usage_block">
     <div class="space-y-2.5">{{{rows}}}</div>
-    <div class="mt-2 text-[10.5px] text-ink-3/80" title="Claude Code reports plan usage on each turn run from this app">{{source}}</div>
+    <div class="mt-1.5 flex items-center gap-2 text-[10.5px] text-ink-3/80">
+        <span class="flex-1 truncate" title="{{sourceTitle}}">{{source}}</span>
+        {{{refresh}}}
+    </div>
+</template>
+
+<template id="usage_refresh">
+    <button class="icon-btn -my-1 -mr-1.5 size-6 shrink-0" data-js-function="_onUsageRefresh" aria-label="Refresh plan usage" title="Refresh plan usage">{{{icon}}}</button>
 </template>
 
 <template id="session_section">
