@@ -330,6 +330,12 @@ how Desktop works, not something the app can fix:
   exact command).
 - Sessions that no process holds (old Desktop sessions whose process has ended, finished
   CLI sessions, sessions started here) are continued **in place**, without a copy.
+- **Sessions started from the web do not appear in Claude Desktop either**, and Desktop's
+  Troubleshooting > Import does not pick them up: it deliberately skips every session run
+  through the Agent SDK (they are recorded with the `sdk-py` entrypoint), the same way it
+  skips scripts and bots. The app does not disguise its sessions to get around that filter.
+  Reopen them with `claude --resume <session id>`, or start the session in Claude Desktop
+  if you want it there and follow it on the web.
 
 To work on the **same** Claude Desktop session from both sides, use Anthropic's own
 Remote Control (claude.ai/code or the Claude mobile app), which drives the Desktop session
