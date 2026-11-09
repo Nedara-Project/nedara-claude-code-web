@@ -1,0 +1,31 @@
+# Nedara Claude Code Web — systemd user service.
+#
+# Install (as the user whose Claude Code sessions you want to see):
+#   mkdir -p ~/.config/systemd/user
+#   cp deploy/systemd/nedara-claude-code-web.service ~/.config/systemd/user/
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now nedara-claude-code-web
+#   journalctl --user -u nedara-claude-code-web    # first start: one-time setup code
+#
+# Adjust WorkingDirectory/ExecStart if the app is not in ~/nedara-claude-code-web.
+[Unit]
+Description=Nedara Claude Code Web
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/nedara-claude-code-web
+ExecStart=%h/nedara-claude-code-web/.venv/bin/python app.py
+# A user service gets a minimal PATH: make the claude CLI, git and your usual
+# tools reachable, as in your shell.
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+Environment=PYTHONUNBUFFERED=1
+Restart=on-failure
+RestartSec=5
+# Claude's sessions keep running in child processes; stop them with the app.
+KillMode=control-group
+TimeoutStopSec=20
+
+[Install]
+WantedBy=default.target

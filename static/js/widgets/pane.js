@@ -156,7 +156,8 @@ export function createPane() {
             ];
             this.bodyEl.innerHTML = render('pane_info', {
                 rows: rows.map(([label, value, cls]) => render('info_row', { label, value, cls: cls || '' })).join(''),
-            });
+            }) + '<p class="mt-4 px-1 text-[11.5px] text-ink-3">Nedara Claude Code Web is an independent Nedara Project, '
+                + 'not affiliated with or endorsed by Anthropic.</p>';
         },
     });
 }

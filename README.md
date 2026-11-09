@@ -18,6 +18,11 @@ have through the official [Claude Agent SDK](https://github.com/anthropics/claud
 Built with [NedaraJS](https://github.com/Nedara-Project/nedarajs), Tailwind CSS, Flask and
 Socket.IO.
 
+> **Independent project.** Nedara Claude Code Web is made by the Nedara Project and is not
+> affiliated with, endorsed by or sponsored by Anthropic. Claude, Claude Code and Claude
+> Desktop are trademarks of Anthropic, PBC, named here only to say what this software
+> works with.
+
 ## Features
 
 - **All your sessions**: Claude Desktop, CLI and web sessions in one sidebar, with
@@ -106,27 +111,91 @@ That CLI needs a valid login of its own:
 
 If the CLI is not signed in, Claude answers "Failed to authenticate" in the transcript.
 
-### Run it as a user service (systemd)
+## Running it as a service (systemd)
 
-```ini
-# ~/.config/systemd/user/nedara-claude-code-web.service
-[Unit]
-Description=Nedara Claude Code Web
+To keep the app running in the background and start it at boot, run it as a systemd
+service. Two options: the **user service** is the recommended one; the **system service**
+suits a machine where the app should start before anyone logs in.
 
-[Service]
-WorkingDirectory=%h/nedara-claude-code-web
-ExecStart=%h/nedara-claude-code-web/.venv/bin/python app.py
-Restart=on-failure
+### User service (recommended)
 
-[Install]
-WantedBy=default.target
-```
+It runs as you, so Claude sees exactly what you see: your `~/.claude`, your projects, your
+git and SSH setup. A ready-made unit is in
+[deploy/systemd/nedara-claude-code-web.service](deploy/systemd/nedara-claude-code-web.service):
 
 ```bash
+mkdir -p ~/.config/systemd/user
+cp deploy/systemd/nedara-claude-code-web.service ~/.config/systemd/user/
+systemctl --user daemon-reload
 systemctl --user enable --now nedara-claude-code-web
 ```
 
-Use `loginctl enable-linger` if it should keep running after you log out.
+On the first start, read the one-time setup code from the journal, then open
+http://127.0.0.1:5070:
+
+```bash
+journalctl --user -u nedara-claude-code-web -n 20
+```
+
+User services stop when you log out. To keep it running (and start it at boot without a
+login):
+
+```bash
+sudo loginctl enable-linger $USER
+```
+
+Everyday commands:
+
+```bash
+systemctl --user status nedara-claude-code-web
+systemctl --user restart nedara-claude-code-web
+journalctl --user -u nedara-claude-code-web -f
+```
+
+### System service
+
+Use it when the app must start with the machine under a given account. It still runs as
+that user, never as root:
+
+```ini
+# /etc/systemd/system/nedara-claude-code-web.service
+[Unit]
+Description=Nedara Claude Code Web
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=alice
+Group=alice
+Environment=HOME=/home/alice
+Environment=PATH=/home/alice/.local/bin:/usr/local/bin:/usr/bin:/bin
+Environment=PYTHONUNBUFFERED=1
+WorkingDirectory=/home/alice/nedara-claude-code-web
+ExecStart=/home/alice/nedara-claude-code-web/.venv/bin/python app.py
+Restart=on-failure
+RestartSec=5
+KillMode=control-group
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now nedara-claude-code-web
+sudo journalctl -u nedara-claude-code-web -n 20    # one-time setup code
+```
+
+### Notes for both
+
+- `PATH` must reach the `claude` CLI you use in your shell (usually `~/.local/bin`);
+  otherwise the app falls back to the CLI bundled with the Agent SDK.
+- A service does not inherit your desktop session: no `SSH_AUTH_SOCK`, so git over SSH
+  needs a key without passphrase or an agent socket set with `Environment=`.
+- Do not add `NoNewPrivileges=true` if Claude must be able to run `sudo` for you.
+- No ordering with a reverse proxy is needed: the app only listens
+  on `127.0.0.1` and the proxy connects when it is ready.
 
 ## Reaching it from another device
 
@@ -188,6 +257,9 @@ folder at the same absolute paths as on the host, because sessions record their 
 It shares the host's process namespace (`pid: host`) so it can see which sessions Claude
 Desktop holds.
 
+The image includes the Claude Code CLI bundled with the Agent SDK: build it for your own
+use, and see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) before publishing it anywhere.
+
 Keep in mind that **Claude's tools then run inside the container**: git, the shell, Python,
 SSH keys and VPN routes are the container's, not your machine's. For the exact same
 behaviour as Claude Desktop, run the app directly on the host.
@@ -233,4 +305,6 @@ is blocked by the Content-Security-Policy.
 
 ## License
 
-[MIT](LICENSE) — a [Nedara Project](https://nedara.org) ([GitHub](https://github.com/Nedara-Project)).
+[MIT](LICENSE) — a [Nedara Project](https://nedara.org) ([GitHub](https://github.com/Nedara-Project)),
+not affiliated with Anthropic. Third-party components and their licences are listed in
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

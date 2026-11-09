@@ -1,5 +1,7 @@
 """Nedara Claude Code Web — your local Claude Code sessions, in the browser.
 
+An independent Nedara Project, not affiliated with or endorsed by Anthropic.
+
 Usage:
     python3 app.py                  start the server (first start: web setup page)
     python3 app.py set-password     set or change the master password
