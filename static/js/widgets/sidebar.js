@@ -1,6 +1,6 @@
 'use strict';
 
-import { Nedara, basename, bus, icon, isBusy, nedaraMark, postForm, api, relativeTime, render, store, toast } from '../core.js';
+import { Nedara, basename, bus, icon, isBusy, nedaraMark, postForm, api, relativeTime, render, store, tildePath, toast } from '../core.js';
 
 const THEMES = ['auto', 'light', 'dark'];
 const THEME_LABELS = { auto: 'Automatic', light: 'Light', dark: 'Dark' };
@@ -29,6 +29,22 @@ function dayBucket(updated) {
     if (days <= 7) return 'Previous 7 days';
     if (days <= 30) return 'Previous 30 days';
     return 'Older';
+}
+
+const WINDOW_LABELS = {
+    five_hour: '5-hour limit',
+    seven_day: 'Weekly limit',
+    seven_day_opus: 'Weekly · Opus',
+    seven_day_sonnet: 'Weekly · Sonnet',
+    overage: 'Extra usage',
+};
+
+function resetText(epoch) {
+    if (!epoch) return '';
+    const date = new Date(epoch * 1000);
+    const sameDay = date.toDateString() === new Date().toDateString();
+    const time = date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+    return sameDay ? `Resets at ${time}` : `Resets ${date.toLocaleDateString(undefined, { weekday: 'short' })} ${time}`;
 }
 
 function statusHtml(session) {
@@ -75,6 +91,12 @@ export function createSidebar() {
                 }
             });
             bus.on('sidebar:open', () => this.open());
+            store.socket.on('usage', (usage) => {
+                store.config.usage = usage;
+                this.renderUsage();
+            });
+            this.renderUsage();
+            setInterval(() => this.renderUsage(), 60000);
         },
 
         _renderShell: function () {
@@ -118,7 +140,7 @@ export function createSidebar() {
             let html = '';
             for (const [key, items] of groups) {
                 const label = this.filter === 'projects' ? basename(key) : key;
-                html += render('session_section', { label, title: key });
+                html += render('session_section', { label, title: this.filter === 'projects' ? tildePath(key) : key });
                 for (const session of items) {
                     let meta = this.filter === 'projects'
                         ? relativeTime(session.updated)
@@ -134,6 +156,47 @@ export function createSidebar() {
                 }
             }
             list.html(html);
+        },
+
+        /** Plan usage from the last turn run here; hidden until one has reported it. */
+        renderUsage: function () {
+            const usage = store.config.usage;
+            const section = this.$selector.find('#usage');
+            const windows = Object.entries(usage?.windows || {})
+                .filter(([, w]) => w.utilization != null || w.resets_at);
+            if (!windows.length) {
+                section.addClass('hidden');
+                return;
+            }
+            const rows = windows.map(([name, w]) => {
+                const limited = usage.status === 'rejected' && usage.limited_window === name;
+                const ratio = limited ? 1 : Math.min(Math.max(w.utilization ?? 0, 0), 1);
+                let tone = 'text-ink-2';
+                let bar = 'bg-ink-3';
+                if (limited || ratio >= 0.9) {
+                    tone = 'text-bad';
+                    bar = 'bg-bad';
+                } else if (ratio >= 0.75) {
+                    tone = 'text-warn';
+                    bar = 'bg-warn';
+                }
+                return render('usage_row', {
+                    label: WINDOW_LABELS[name] || name.replace(/_/g, ' '),
+                    percent: limited ? 'Limit reached' : (w.utilization == null ? '—' : `${Math.round(ratio * 100)}%`),
+                    width: `${Math.round(ratio * 100)}%`,
+                    tone, bar,
+                    resets: resetText(w.resets_at),
+                });
+            }).join('');
+            const age = relativeTime(usage.updated_at);
+            const when = age === 'now' ? 'just now' : (/\d (min|h|d)$/.test(age) ? `${age} ago` : `on ${age}`);
+            section.html(render('usage_block', {
+                rows,
+                source: `Plan usage · last web turn ${when}${usage.using_overage ? ' · extra usage on' : ''}`,
+            }));
+            section.removeClass('hidden');
+            // Widths are set from script: the CSP forbids inline style attributes.
+            section.find('.usage-bar').each((i, el) => { el.style.width = el.dataset.width; });
         },
 
         _markCurrent: function () {

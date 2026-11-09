@@ -1,6 +1,6 @@
 'use strict';
 
-import { Nedara, api, icon, render, toast } from '../core.js';
+import { Nedara, api, icon, render, tildePath, toast } from '../core.js';
 
 /** Modal folder browser limited to the allowed roots; calls onChoose(path). */
 export function openFolderPicker(startPath, onChoose) {
@@ -20,6 +20,7 @@ export function openFolderPicker(startPath, onChoose) {
                 const data = await api(`/api/folders?path=${encodeURIComponent(path || '')}`);
                 this.$selector.html(render('folder_dialog', {
                     path: data.path,
+                    displayPath: tildePath(data.path),
                     parent: data.parent || '',
                     upHidden: data.parent ? '' : 'invisible',
                     iconClose: icon('close'),

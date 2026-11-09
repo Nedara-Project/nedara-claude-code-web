@@ -106,7 +106,23 @@ def emit(event, data, room):
     socketio.emit(event, data, to=room)
 
 
-runners = RunnerManager(config, index, emit, lambda event, **kw: audit.write(event, **kw))
+class UsageStore:
+    """Last plan usage reported by the CLI (data/usage.json), shared with every browser."""
+
+    def __init__(self, path):
+        self.path = path
+        self.usage = json.loads(path.read_text()) if path.exists() else None
+
+    def update(self, usage):
+        self.usage = usage
+        self.path.write_text(json.dumps(usage))
+        socketio.emit('usage', usage, to='app')
+
+
+usage_store = UsageStore(config.data_dir / 'usage.json')
+runners = RunnerManager(
+    config, index, emit, lambda event, **kw: audit.write(event, **kw), on_usage=usage_store.update,
+)
 
 
 # ── Authentication ─────────────────────────────────────────────────────────
@@ -310,6 +326,8 @@ def api_state():
         default_model=config.default_model,
         efforts=list(EFFORT_LEVELS),
         roots=[str(r) for r in config.allowed_roots],
+        home=str(Path.home()),
+        usage=usage_store.usage,
         file_viewer=config.file_viewer,
         sessions=[_session_payload(s) for s in index.list()],
     )

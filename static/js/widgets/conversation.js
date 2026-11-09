@@ -1,6 +1,6 @@
 'use strict';
 
-import { Nedara, api, basename, bus, copyText, escapeHtml, icon, isBusy, relativeTime, render, store, toNode, toast } from '../core.js';
+import { Nedara, api, basename, bus, copyText, escapeHtml, icon, isBusy, relativeTime, render, store, tildePath, toNode, toast } from '../core.js';
 
 const TOOL_ICONS = {
     Bash: 'terminal', Read: 'eye', NotebookRead: 'eye', Edit: 'pencil', MultiEdit: 'pencil', Write: 'pencil',
@@ -217,7 +217,7 @@ export function createConversation() {
             }
             this.$selector.find('#conv-heading').html(render('conversation_heading', {
                 title: s.title,
-                cwd: s.cwd,
+                cwd: tildePath(s.cwd),
                 folder: basename(s.cwd),
                 branch: s.branch && s.branch !== 'HEAD' ? `<span class="text-ink-3/60">·</span><span class="inline-flex items-center gap-1 truncate">${icon('branch', 'size-3')}${escapeHtml(s.branch)}</span>` : '',
                 status: (s.parent_id ? `<a href="#/s/${s.parent_id}" class="chip ml-1 shrink-0 hover:text-ink hover:bg-fill-strong" title="Open the original session">${icon('fork', 'size-3')}Copy</a>` : '')

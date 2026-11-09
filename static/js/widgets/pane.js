@@ -1,6 +1,6 @@
 'use strict';
 
-import { Nedara, api, basename, bus, escapeHtml, formatBytes, icon, render, store } from '../core.js';
+import { Nedara, api, basename, bus, escapeHtml, formatBytes, icon, render, store, tildePath } from '../core.js';
 
 const STATUS_STYLES = { M: 'text-warn', A: 'text-ok', D: 'text-bad', R: 'text-info', '??': 'text-ok', '?': 'text-ok' };
 
@@ -92,7 +92,7 @@ export function createPane() {
             this.bodyEl.innerHTML = render('pane_changes', {
                 iconBranch: `<span class="text-ink-3">${icon('branch', 'size-3.5')}</span>`,
                 branch: data.branch || 'detached HEAD',
-                root: data.root,
+                root: tildePath(data.root),
                 files: data.files.map((f) => render('change_row', { ...f, cls: STATUS_STYLES[f.status] || 'text-ink-2' })).join(''),
                 diff: data.diff
                     ? `<div class="diff py-1.5 !max-h-none">${diffLines(data.diff)}</div>${data.truncated ? '<p class="text-[12px] text-ink-3">Diff truncated.</p>' : ''}`
@@ -144,7 +144,7 @@ export function createPane() {
             const s = { ...store.sessions.get(store.currentId) };
             const rows = [
                 ['Session', s.id, 'font-mono text-[12px]'],
-                ['Folder', s.cwd, 'font-mono text-[12px]'],
+                ['Folder', tildePath(s.cwd), 'font-mono text-[12px]'],
                 ['Branch', s.branch || '—'],
                 ['Started', s.created ? new Date(s.created).toLocaleString() : '—'],
                 ['Last activity', new Date(s.updated * 1000).toLocaleString()],

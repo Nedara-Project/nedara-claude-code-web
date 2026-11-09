@@ -29,6 +29,7 @@
         </div>
     </div>
     <nav id="session-list" class="flex-1 overflow-y-auto px-2 pt-3 pb-4" aria-label="Sessions"></nav>
+    <section id="usage" class="hidden px-4 pt-3 pb-2 border-t border-hairline" aria-label="Plan usage"></section>
     <div class="flex items-center gap-2 px-4 pt-2.5 pb-1 border-t border-hairline text-[11.5px] text-ink-3">
         <a href="https://nedara.org" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 hover:text-ink-2 transition-colors" title="nedara.org · Independent project, not affiliated with Anthropic">{{{nedaraMark}}}<span>A Nedara Project</span></a>
         <a href="https://github.com/Nedara-Project" target="_blank" rel="noopener noreferrer" class="ml-auto hover:text-ink-2 transition-colors" title="Nedara Project on GitHub" aria-label="Nedara Project on GitHub">{{{iconGithub}}}</a>
@@ -41,6 +42,24 @@
             <button class="icon-btn" data-js-function="_onLogout" aria-label="Sign out" title="Sign out">{{{iconLogout}}}</button>
         </div>
     </div>
+</template>
+
+<template id="usage_row">
+    <div class="space-y-1">
+        <div class="flex items-baseline gap-2 text-[11.5px]">
+            <span class="font-medium text-ink-2">{{label}}</span>
+            <span class="ml-auto tabular-nums font-semibold {{tone}}">{{percent}}</span>
+        </div>
+        <div class="h-1 rounded-full bg-fill overflow-hidden">
+            <div class="usage-bar h-full rounded-full transition-[width] duration-500 ease-apple {{bar}}" data-width="{{width}}"></div>
+        </div>
+        <div class="text-[11px] text-ink-3">{{resets}}</div>
+    </div>
+</template>
+
+<template id="usage_block">
+    <div class="space-y-2.5">{{{rows}}}</div>
+    <div class="mt-2 text-[10.5px] text-ink-3/80" title="Claude Code reports plan usage on each turn run from this app">{{source}}</div>
 </template>
 
 <template id="session_section">
@@ -411,7 +430,7 @@
             </div>
             <div class="px-5 pb-3 flex items-center gap-2">
                 <button class="icon-btn {{upHidden}}" data-js-function="_onFolderOpen" data-path="{{parent}}" aria-label="Parent folder">{{{iconBack}}}</button>
-                <span class="font-mono text-[12.5px] text-ink-2 truncate" title="{{path}}">{{path}}</span>
+                <span class="font-mono text-[12.5px] text-ink-2 truncate" title="{{path}}">{{displayPath}}</span>
             </div>
             <ul class="flex-1 overflow-y-auto px-3 pb-2">{{{folders}}}</ul>
             <div class="flex items-center justify-end gap-2 px-5 py-4 border-t border-hairline">

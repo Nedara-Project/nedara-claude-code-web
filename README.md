@@ -23,6 +23,10 @@ Socket.IO.
 > Desktop are trademarks of Anthropic, PBC, named here only to say what this software
 > works with.
 
+<p align="center">
+  <img src="docs/screenshots/conversation-dark.png" alt="A Claude Desktop session mirrored in the browser, with its tool calls, answer and turn summary" width="100%">
+</p>
+
 ## Features
 
 - **All your sessions**: Claude Desktop, CLI and web sessions in one sidebar, with
@@ -38,6 +42,8 @@ Socket.IO.
   diffs, the pinned task list (`update_plan`), turn summaries, pasted text and thinking.
 - **Side pane**: the git changes of the session folder, a read-only file browser and
   session details.
+- **Plan usage**: your 5-hour and weekly limits, with their reset times, as Claude Code
+  reports them on each turn run from the app.
 - **No clash with Claude Desktop**: a session still open in another Claude process is
   never written to. Replying to it continues it in a copy (a fork), with its full history.
   See [Claude Desktop sessions](#claude-desktop-sessions-what-works-and-what-does-not)
@@ -47,6 +53,17 @@ Socket.IO.
 - **Guided first start**: a setup page protected by a one-time code from the server log.
 - **Security first**: master password plus optional TOTP, strict Content-Security-Policy,
   CSRF protection, loopback-only by default, an audit log. See [SECURITY.md](SECURITY.md).
+
+## Screenshots
+
+| | |
+|---|---|
+| ![Light theme with the git changes of the session in the side pane](docs/screenshots/changes-light.png) | ![A permission request answered from the browser while Claude works](docs/screenshots/permission-dark.png) |
+| Light theme, with the session's uncommitted changes | Allow or deny Claude's actions from the browser |
+| ![The sign-in page](docs/screenshots/sign-in.png) | <img src="docs/screenshots/mobile-light.png" alt="The same session on a phone" width="45%"> |
+| Master password, plus an optional second factor | The same session on a phone |
+
+The projects and sessions shown are fictional demo data (`tools/make_demo.py`).
 
 ## How it works
 
@@ -344,6 +361,10 @@ working on sessions Desktop does not hold, and starting new ones from any browse
 
 **Other differences**
 
+- The plan usage meter is refreshed by turns run from the web only: Claude Code reports
+  usage to the program that runs the turn, and turns run in Claude Desktop report to
+  Desktop. The meter says when it was last updated.
+
 - Tools that only exist inside Claude Desktop (its task list, panes, side sessions…) are not
   available to sessions run from here. Their past calls still render.
 - Permission prompts of a turn run from the web are answered on the web; those of a turn
@@ -356,6 +377,17 @@ npm install
 npm run watch     # rebuild static/css/app.css on change
 npm run vendor    # refresh the Socket.IO client and the Inter font from node_modules
 ```
+
+The README screenshots come from a fictional demo workspace, never from real sessions:
+
+```bash
+python3 tools/make_demo.py /tmp/nccw-demo
+python3 -c "from security import AuthStore; AuthStore('/tmp/nccw-demo/data').set_password('demo-password-123')"
+HOME=/tmp/nccw-demo/home NCCW_CONFIG=/tmp/nccw-demo/config.ini .venv/bin/python app.py &
+DEMO_PASSWORD=demo-password-123 node tools/screenshots.mjs http://127.0.0.1:5072 docs/screenshots
+```
+
+`tools/screenshots.mjs` drives headless Chrome (set `CHROME` if it is not `google-chrome`).
 
 The UI is a set of NedaraJS widgets (`static/js/widgets/`) rendering the templates in
 `static/html/templates.html`. Templates use escaped `{{vars}}`, trusted `{{{html}}}` built

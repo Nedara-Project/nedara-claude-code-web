@@ -61,6 +61,13 @@ def _edit_diff(old, new):
     return lines[:DIFF_MAX_LINES]
 
 
+def _relative_to(path, cwd):
+    """A path inside the session folder, shown relative to it like Claude Desktop does."""
+    if cwd and path.startswith(cwd.rstrip('/') + '/'):
+        return path[len(cwd.rstrip('/')) + 1:]
+    return path
+
+
 def _tool_details(name, inp):
     """Return (summary, diff_lines) for the tool card header and body."""
     inp = inp if isinstance(inp, dict) else {}
@@ -248,6 +255,7 @@ def record_to_events(rec):
             inp = block.get('input') or {}
             label, server = _short_tool_name(name)
             summary, diff = _tool_details(label, inp)
+            summary = _relative_to(summary, rec.get('cwd', ''))
             event = {
                 't': 'tool', 'id': block.get('id'), 'ts': ts, 'name': name, 'label': label,
                 'server': server, 'summary': summary, 'diff': diff,

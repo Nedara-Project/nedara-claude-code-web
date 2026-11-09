@@ -24,6 +24,7 @@ from claude_agent_sdk import (
     ClaudeSDKClient,
     PermissionResultAllow,
     PermissionResultDeny,
+    RateLimitEvent,
     ResultMessage,
     StreamEvent,
 )
@@ -54,6 +55,25 @@ def detach_from_parent_session():
         return 0
     removed = [name for name in PARENT_SESSION_VARS if os.environ.pop(name, None) is not None]
     return len(removed)
+
+
+def usage_from_rate_limit(info):
+    """Plan usage as reported by the CLI on each turn: one entry per limit window."""
+    raw = info.raw or {}
+    windows = {
+        name: {'utilization': w.get('utilization'), 'resets_at': w.get('resetsAt')}
+        for name, w in (raw.get('unifiedWindows') or {}).items() if isinstance(w, dict)
+    }
+    if not windows and info.rate_limit_type:
+        windows[info.rate_limit_type] = {'utilization': info.utilization, 'resets_at': info.resets_at}
+    return {
+        'status': info.status,
+        'limited_window': info.rate_limit_type,
+        'overage_status': info.overage_status,
+        'using_overage': bool(raw.get('isUsingOverage')),
+        'windows': windows,
+        'updated_at': time.time(),
+    }
 
 
 class RunnerError(Exception):
@@ -137,6 +157,8 @@ class Runner:
             async for message in self.client.receive_response():
                 if isinstance(message, StreamEvent):
                     self._forward_stream(message.event)
+                elif isinstance(message, RateLimitEvent):
+                    self.manager.on_usage(usage_from_rate_limit(message.rate_limit_info))
                 elif isinstance(message, ResultMessage):
                     self.cost = message.total_cost_usd
                     error = None
@@ -195,11 +217,12 @@ class Runner:
 
 
 class RunnerManager:
-    def __init__(self, config, index, emit, audit):
+    def __init__(self, config, index, emit, audit, on_usage=lambda usage: None):
         self.config = config
         self.index = index
         self.emit = emit
         self.audit = audit
+        self.on_usage = on_usage
         self.runners = {}
         self.loop = asyncio.new_event_loop()
         self._thread = threading.Thread(target=self._run_loop, name='runner-loop', daemon=True)

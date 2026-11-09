@@ -171,6 +171,14 @@ export function basename(path) {
     return parts.length ? parts[parts.length - 1] : path || '';
 }
 
+/** Shows a path under the home folder as ~/…, like a shell prompt. */
+export function tildePath(path) {
+    const home = store.config?.home;
+    if (!path || !home) return path || '';
+    if (path === home) return '~';
+    return path.startsWith(`${home}/`) ? `~${path.slice(home.length)}` : path;
+}
+
 export function relativeTime(value) {
     const date = typeof value === 'number' ? new Date(value * 1000) : new Date(value);
     const seconds = Math.round((Date.now() - date.getTime()) / 1000);

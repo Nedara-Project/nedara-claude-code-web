@@ -1,6 +1,6 @@
 'use strict';
 
-import { Nedara, api, basename, bus, icon, isBusy, render, store, toast } from '../core.js';
+import { Nedara, api, basename, bus, icon, isBusy, render, store, tildePath, toast } from '../core.js';
 import { openFolderPicker } from './dialogs.js';
 
 const MODE_LABELS = {
@@ -182,7 +182,7 @@ export function createComposer() {
             folderButton.toggleClass('hidden', this.mode !== 'new');
             if (this.mode === 'new') {
                 folderButton.find('span').text(basename(this.cwd));
-                folderButton.attr('title', this.cwd);
+                folderButton.attr('title', tildePath(this.cwd));
             }
             if (this.session && this.session.id !== previous && this.session.permission_mode
                 && store.config.permission_modes.includes(this.session.permission_mode)) {
