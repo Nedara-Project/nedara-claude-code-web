@@ -151,9 +151,17 @@ export function createPane() {
                 ['Model', s.model || 'Default'],
                 ['Permissions', s.permission_mode || 'Default'],
                 ['Size', formatBytes(s.size || 0)],
-                ['Origin', s.desktop ? 'Claude Desktop' : 'Claude Code (CLI or web)'],
+                ['Origin', s.parent_id ? 'Web copy' : (s.desktop ? 'Claude Desktop' : (s.web ? 'This web app' : 'Claude Code CLI'))],
                 ['Held by', s.process ? `${s.process.entrypoint} · pid ${s.process.pid} · ${s.process.status || 'idle'}` : (s.run_state ? 'This server' : 'Nobody')],
+                ['Resume in a terminal', `claude --resume ${s.id}`, 'font-mono text-[12px]'],
             ];
+            if (s.parent_id) {
+                const parent = store.sessions.get(s.parent_id);
+                rows.splice(1, 0, ['Copy of', `${parent ? parent.title : s.parent_id} (${s.parent_id})`]);
+            }
+            if (s.copies?.length) {
+                rows.splice(1, 0, ['Web copies', s.copies.map((c) => c.id).join('\n'), 'font-mono text-[12px] whitespace-pre-line']);
+            }
             this.bodyEl.innerHTML = render('pane_info', {
                 rows: rows.map(([label, value, cls]) => render('info_row', { label, value, cls: cls || '' })).join(''),
             }) + '<p class="mt-4 px-1 text-[11.5px] text-ink-3">Nedara Claude Code Web is an independent Nedara Project, '

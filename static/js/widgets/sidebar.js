@@ -120,9 +120,10 @@ export function createSidebar() {
                 const label = this.filter === 'projects' ? basename(key) : key;
                 html += render('session_section', { label, title: key });
                 for (const session of items) {
-                    const meta = this.filter === 'projects'
+                    let meta = this.filter === 'projects'
                         ? relativeTime(session.updated)
                         : `${basename(session.cwd)} · ${relativeTime(session.updated)}`;
+                    if (session.parent_id) meta = `Web copy · ${meta}`;
                     html += render('session_row', {
                         id: session.id,
                         title: session.title,

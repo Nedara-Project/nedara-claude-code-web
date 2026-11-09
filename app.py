@@ -56,20 +56,25 @@ auth = AuthStore(config.data_dir)
 audit = AuditLog(config.data_dir)
 limiter = LoginLimiter(config.max_login_attempts, config.lockout_minutes)
 class WebSessions:
-    """Ids of the sessions started or forked from this app (kept in data/web_sessions.json)."""
+    """Sessions started or forked from this app, with the session each copy came from.
+
+    Kept in data/web_sessions.json as {session id: parent id or null}.
+    """
 
     def __init__(self, path):
         self.path = path
         self.lock = threading.Lock()
-        self.ids = set(json.loads(path.read_text())) if path.exists() else set()
+        data = json.loads(path.read_text()) if path.exists() else {}
+        # Older versions stored a plain list of ids.
+        self.sessions = dict.fromkeys(data) if isinstance(data, list) else data
 
     def __call__(self):
-        return self.ids
+        return self.sessions
 
-    def add(self, session_id):
+    def add(self, session_id, parent=None):
         with self.lock:
-            self.ids = self.ids | {session_id}
-            self.path.write_text(json.dumps(sorted(self.ids)))
+            self.sessions = {**self.sessions, session_id: parent}
+            self.path.write_text(json.dumps(self.sessions, indent=1, sort_keys=True))
 
 
 web_sessions = WebSessions(config.data_dir / 'web_sessions.json')
@@ -418,7 +423,7 @@ def api_send():
     if error:
         return error
     if new_id != session_id:
-        web_sessions.add(new_id)
+        web_sessions.add(new_id, parent=session_id if fork else None)
     audit.write('prompt', ip=client_ip(), session_id=new_id, fork=fork, resumed=bool(session_id), chars=len(prompt))
     return jsonify(session_id=new_id)
 

@@ -1,6 +1,6 @@
 'use strict';
 
-import { Nedara, api, basename, bus, escapeHtml, icon, isBusy, render, store, toNode, toast } from '../core.js';
+import { Nedara, api, basename, bus, copyText, escapeHtml, icon, isBusy, relativeTime, render, store, toNode, toast } from '../core.js';
 
 const TOOL_ICONS = {
     Bash: 'terminal', Read: 'eye', NotebookRead: 'eye', Edit: 'pencil', MultiEdit: 'pencil', Write: 'pencil',
@@ -220,7 +220,8 @@ export function createConversation() {
                 cwd: s.cwd,
                 folder: basename(s.cwd),
                 branch: s.branch && s.branch !== 'HEAD' ? `<span class="text-ink-3/60">·</span><span class="inline-flex items-center gap-1 truncate">${icon('branch', 'size-3')}${escapeHtml(s.branch)}</span>` : '',
-                status: status ? `<span class="ml-1 shrink-0">${status}</span>` : '',
+                status: (s.parent_id ? `<a href="#/s/${s.parent_id}" class="chip ml-1 shrink-0 hover:text-ink hover:bg-fill-strong" title="Open the original session">${icon('fork', 'size-3')}Copy</a>` : '')
+                    + (status ? `<span class="ml-1 shrink-0">${status}</span>` : ''),
             }));
             document.title = `${s.title} · Claude Code`;
         },
@@ -239,16 +240,31 @@ export function createConversation() {
             notices.querySelectorAll('[data-banner], #dock-plan').forEach((el) => el.remove());
             if (!this.session) return;
             const s = this._sessionState();
-            let banner = '';
+            const strong = (text) => `<strong class="text-ink font-medium">${escapeHtml(text)}</strong>`;
+            const link = (id, text) => `<a href="#/s/${id}" class="text-accent-ink font-medium hover:underline">${escapeHtml(text)}</a>`;
+            const banners = [];
             if (store.config.read_only) {
-                banner = 'This instance is <strong class="text-ink font-medium">read-only</strong>. New messages in this session appear here live.';
+                banners.push(['eye', `This instance is ${strong('read-only')}. New messages in this session appear here live.`]);
             } else if (s.process && !s.run_state) {
                 const where = s.process.entrypoint === 'claude-desktop' ? 'Claude Desktop' : 'another Claude process';
-                banner = `Open in <strong class="text-ink font-medium">${where}</strong>, mirrored live. `
-                    + 'Replying here continues it in a <strong class="text-ink font-medium">copy</strong>.';
+                let html = `Open in ${strong(where)}, mirrored live. Replying here continues it in a ${strong('copy')}.`;
+                if (s.copies?.length) {
+                    const latest = s.copies[0];
+                    const more = s.copies.length > 1 ? ` (${s.copies.length} copies)` : '';
+                    html += ` ${link(latest.id, `Latest copy, ${relativeTime(latest.updated)} →`)}${more}`;
+                }
+                banners.push(['fork', html]);
+            } else if (s.copies?.length) {
+                banners.push(['fork', `Continued from the web in ${link(s.copies[0].id, s.copies.length > 1 ? `${s.copies.length} copies →` : 'a copy →')}`]);
             }
-            if (banner) {
-                const node = toNode(render('dock_banner', { icon: icon(store.config.read_only ? 'eye' : 'fork'), html: banner }));
+            if (s.parent_id) {
+                const command = `claude --resume ${s.id}`;
+                banners.push(['fork', `Web copy of ${link(s.parent_id, 'the original session')}, not listed in Claude Desktop. `
+                    + `Reopen it in a terminal: <code class="font-mono text-[11.5px] bg-fill rounded-md px-1.5 py-0.5">${escapeHtml(command)}</code> `
+                    + `<button class="text-accent-ink font-medium hover:underline" data-js-function="_onCopyText" data-text="${escapeHtml(command)}">Copy</button>`]);
+            }
+            for (const [name, html] of banners.reverse()) {
+                const node = toNode(render('dock_banner', { icon: icon(name), html }));
                 node.dataset.banner = '1';
                 notices.prepend(node);
             }
@@ -270,7 +286,8 @@ export function createConversation() {
             const s = store.sessions.get(this.session.id);
             if (!s) return;
             const changed = s.title !== this.session.title || Boolean(s.process) !== Boolean(this.session.process)
-                || s.run_state !== this.session.run_state || s.process?.status !== this.session.process?.status;
+                || s.run_state !== this.session.run_state || s.process?.status !== this.session.process?.status
+                || (s.copies || []).length !== (this.session.copies || []).length || s.parent_id !== this.session.parent_id;
             this.session = { ...this.session, ...s };
             if (changed) {
                 this._renderHeading();
@@ -393,6 +410,11 @@ export function createConversation() {
                     render('code_block', { text, cls: event.is_error ? '!text-bad' : 'text-ink-2' }),
                 ));
             }
+        },
+
+        _onCopyText: async function (ev) {
+            const ok = await copyText(ev.currentTarget.dataset.text);
+            toast(ok ? 'Copied to the clipboard.' : 'Copy failed: select the text instead.', ok ? 'ok' : 'error');
         },
 
         _onRecapAction: function (ev) {

@@ -201,6 +201,25 @@ export function toast(text, kind = 'info') {
     }, kind === 'error' ? 6000 : 3000);
 }
 
+/** Copies text, with a fallback for plain-HTTP pages where navigator.clipboard is missing. */
+export async function copyText(text) {
+    try {
+        await navigator.clipboard.writeText(text);
+        return true;
+    } catch (e) {
+        const area = document.createElement('textarea');
+        area.value = text;
+        area.setAttribute('readonly', '');
+        area.style.position = 'fixed';
+        area.style.opacity = '0';
+        document.body.append(area);
+        area.select();
+        const ok = document.execCommand('copy');
+        area.remove();
+        return ok;
+    }
+}
+
 export function isBusy(session) {
     return session?.run_state === 'busy' || session?.run_state === 'starting' || session?.process?.status === 'busy';
 }

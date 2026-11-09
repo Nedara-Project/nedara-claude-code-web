@@ -347,7 +347,7 @@ class EventCache:
 # ── Session index ──────────────────────────────────────────────────────────
 
 def _first_prompt_and_cwd(path):
-    cwd, prompt, branch, created, entrypoint = '', '', '', '', ''
+    cwd, prompt, branch, created, entrypoint, root = '', '', '', '', '', ''
     with open(path, 'rb') as fh:
         chunk = fh.read(HEAD_BYTES)
     for raw in chunk.split(b'\n'):
@@ -361,15 +361,18 @@ def _first_prompt_and_cwd(path):
         entrypoint = entrypoint or rec.get('entrypoint', '')
         branch = branch or rec.get('gitBranch', '')
         created = created or rec.get('timestamp', '')
+        # Forks copy the history with its message ids: the first one ties a copy to its original.
+        if not root and rec.get('type') in ('user', 'assistant'):
+            root = rec.get('uuid', '')
         if not prompt and rec.get('type') == 'user' and not rec.get('isMeta'):
             content = (rec.get('message') or {}).get('content')
             if isinstance(content, list):
                 content = '\n'.join(b.get('text', '') for b in content if b.get('type') == 'text')
             if isinstance(content, str):
                 prompt, _ = _clean_user_text(_PASTE_RE.sub(' [pasted text] ', content))
-        if cwd and prompt and entrypoint:
+        if cwd and prompt and entrypoint and root:
             break
-    return cwd, prompt, branch, created, entrypoint
+    return cwd, prompt, branch, created, entrypoint, root
 
 
 def _tail_metadata(path, size):
@@ -393,10 +396,35 @@ def _tail_metadata(path, size):
     return title, last_prompt
 
 
+def _link_copies(sessions, web):
+    """Set parent_id on copies made from the web, and copies (newest first) on their originals."""
+    by_id = {s['id']: s for s in sessions}
+    by_root = {}
+    for s in sessions:
+        s['parent_id'] = None
+        s['copies'] = []
+        if s['root']:
+            by_root.setdefault(s['root'], []).append(s)
+    for s in sessions:
+        if not s['web']:
+            continue
+        parent = web.get(s['id'])
+        if not parent and s['root']:
+            # Copies made before parents were recorded: the original is the one
+            # non-web session sharing the same first message.
+            others = [o for o in by_root.get(s['root'], []) if o['id'] != s['id'] and not o['web']]
+            parent = others[0]['id'] if len(others) == 1 else None
+        if parent in by_id:
+            s['parent_id'] = parent
+            by_id[parent]['copies'].append({'id': s['id'], 'updated': s['updated']})
+    for s in sessions:
+        s['copies'].sort(key=lambda c: c['updated'], reverse=True)
+
+
 class SessionIndex:
     def __init__(self, config, web_sessions=frozenset):
         self.config = config
-        # Callable returning the ids of sessions started from this web app.
+        # Callable returning {session id: parent id or None} for sessions started from this app.
         self.web_sessions = web_sessions
         self._files = {}
         self._desktop = {}
@@ -463,7 +491,7 @@ class SessionIndex:
         cached = self._files.get(path)
         if cached and cached[0] == key:
             return cached[1]
-        cwd, first_prompt, branch, created, entrypoint = _first_prompt_and_cwd(path)
+        cwd, first_prompt, branch, created, entrypoint, root = _first_prompt_and_cwd(path)
         title, last_prompt = _tail_metadata(path, stat.st_size)
         summary = {
             'id': path.stem,
@@ -472,6 +500,7 @@ class SessionIndex:
             'branch': branch,
             'created': created,
             'entrypoint': entrypoint,
+            'root': root,
             'transcript_title': title,
             'first_prompt': first_prompt[:200],
             'last_prompt': last_prompt[:200],
@@ -526,6 +555,7 @@ class SessionIndex:
                 })
             for stale in set(self._files) - seen:
                 self._files.pop(stale, None)
+        _link_copies(sessions, web)
         sessions.sort(key=lambda s: s['updated'], reverse=True)
         return sessions
 

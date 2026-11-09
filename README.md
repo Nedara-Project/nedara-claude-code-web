@@ -40,6 +40,8 @@ Socket.IO.
   session details.
 - **No clash with Claude Desktop**: a session still open in another Claude process is
   never written to. Replying to it continues it in a copy (a fork), with its full history.
+  See [Claude Desktop sessions](#claude-desktop-sessions-what-works-and-what-does-not)
+  for what this means.
 - **Light and dark themes**, a phone layout, and keyboard shortcuts (`N` new session,
   `/` search, `Esc` stop).
 - **Guided first start**: a setup page protected by a one-time code from the server log.
@@ -280,15 +282,45 @@ Every key is documented in [config.ini.example](config.ini.example). The main on
 | agent | `allowed_permission_modes` | `default, acceptEdits, plan, auto` | Modes offered in the composer |
 | files | `file_viewer`, `denylist` | `1` | Read-only file browser and the files it never shows |
 
-## Good to know
+## Claude Desktop sessions: what works and what does not
 
-- Sessions continued or started here run through the Agent SDK. They do not show up in
-  Claude Desktop's sidebar, which lists only the sessions Desktop created itself. They do
-  show up in `claude --resume`.
-- Tools that only exist in Claude Desktop (its task list, panes, sessions…) are not
+**Claude Desktop does not need to be running.** The app reads the transcripts Claude Code
+writes to `~/.claude` and runs its own `claude` CLI through the Agent SDK, signed in with
+the CLI's own login or the token from `claude setup-token`. Desktop only matters for the
+sessions it has open.
+
+**Messages sent from Claude Desktop show up on the web live.** Desktop appends every turn
+to the session's transcript, and the app streams the file to the browser as it grows.
+
+**Messages sent from the web do not show up in Claude Desktop.** This is a limitation of
+how Desktop works, not something the app can fix:
+
+- Claude Desktop keeps a Claude Code process alive for each of its recent sessions, holding
+  the conversation in memory. If the web wrote into the same session, Desktop would not see
+  those turns, and its next message would carry on from its own last message: the web turns
+  would end up on a dead branch of the history.
+- So when a session is held by Claude Desktop (or by a `claude` running in a terminal), a
+  reply from the web **continues it in a copy**: a new session with the full history, run
+  by the app. Nothing is lost and neither side overwrites the other.
+- Claude Desktop only lists the sessions it created itself, and its own import skips
+  sessions run through the Agent SDK, so **the copy does not appear in Desktop**. On the
+  web it is marked "Web copy", linked to its original, and the original links to its
+  copies. In a terminal, `claude --resume <session id>` reopens it (the Info pane shows the
+  exact command).
+- Sessions that no process holds (old Desktop sessions whose process has ended, finished
+  CLI sessions, sessions started here) are continued **in place**, without a copy.
+
+To work on the **same** Claude Desktop session from both sides, use Anthropic's own
+Remote Control (claude.ai/code or the Claude mobile app), which drives the Desktop session
+itself. This app is the right tool for the other cases: following everything live,
+working on sessions Desktop does not hold, and starting new ones from any browser.
+
+**Other differences**
+
+- Tools that only exist inside Claude Desktop (its task list, panes, side sessions…) are not
   available to sessions run from here. Their past calls still render.
-- Claude Desktop keeps a process open for each of its recent sessions, so most Desktop
-  sessions are mirrored and continued in a copy rather than in place.
+- Permission prompts of a turn run from the web are answered on the web; those of a turn
+  run in Desktop are answered in Desktop.
 
 ## Development
 
