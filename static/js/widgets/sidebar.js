@@ -38,6 +38,7 @@ const WINDOW_LABELS = {
     seven_day_sonnet: 'Weekly · Sonnet',
     seven_day_oauth_apps: 'Weekly · Apps',
     overage: 'Extra usage',
+    extra_usage: 'Extra usage',
 };
 
 function resetText(epoch) {
@@ -46,6 +47,13 @@ function resetText(epoch) {
     const sameDay = date.toDateString() === new Date().toDateString();
     const time = date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
     return sameDay ? `Resets at ${time}` : `Resets ${date.toLocaleDateString(undefined, { weekday: 'short' })} ${time}`;
+}
+
+function spentText(spent) {
+    const money = (amount) => (spent.currency
+        ? new Intl.NumberFormat(undefined, { style: 'currency', currency: spent.currency }).format(amount)
+        : amount.toFixed(2));
+    return `${money(spent.used)} of ${money(spent.limit)} this month`;
 }
 
 function statusHtml(session) {
@@ -195,7 +203,7 @@ export function createSidebar() {
                     percent: limited ? 'Limit reached' : (w.utilization == null ? '—' : `${Math.round(ratio * 100)}%`),
                     width: `${Math.round(ratio * 100)}%`,
                     tone, bar,
-                    resets: resetText(w.resets_at),
+                    resets: w.spent ? spentText(w.spent) : resetText(w.resets_at),
                 });
             }).join('');
             const age = relativeTime(usage.updated_at);

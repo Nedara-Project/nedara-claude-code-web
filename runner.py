@@ -86,15 +86,31 @@ def _epoch(iso):
         return None
 
 
+REPORT_WINDOWS = ('five_hour', 'seven_day', 'seven_day_opus', 'seven_day_sonnet', 'seven_day_oauth_apps')
+
+
 def usage_from_report(report):
     """Plan usage from the CLI's get_usage answer (utilization 0-100, ISO reset times)."""
+    limits = report.get('rate_limits') or {}
     windows = {
         name: {
-            'utilization': w['utilization'] / 100 if w.get('utilization') is not None else None,
-            'resets_at': _epoch(w.get('resets_at')),
+            'utilization': limits[name]['utilization'] / 100 if limits[name].get('utilization') is not None else None,
+            'resets_at': _epoch(limits[name].get('resets_at')),
         }
-        for name, w in (report.get('rate_limits') or {}).items() if isinstance(w, dict)
+        for name in REPORT_WINDOWS if isinstance(limits.get(name), dict)
     }
+    extra = limits.get('extra_usage')
+    if isinstance(extra, dict) and extra.get('is_enabled') and extra.get('utilization') is not None:
+        scale = 10 ** (extra.get('decimal_places') or 0)
+        windows['extra_usage'] = {
+            'utilization': extra['utilization'] / 100,
+            'resets_at': None,
+            'spent': {
+                'used': (extra.get('used_credits') or 0) / scale,
+                'limit': (extra.get('monthly_limit') or 0) / scale,
+                'currency': extra.get('currency') or '',
+            },
+        }
     limited = next((name for name, w in windows.items() if (w['utilization'] or 0) >= 1), None)
     return {
         'status': 'rejected' if limited else 'allowed',
