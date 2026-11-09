@@ -57,6 +57,12 @@
     </div>
 </template>
 
+<template id="usage_empty">
+    <div class="flex items-start gap-2 text-[11.5px] text-ink-3">
+        {{{icon}}}<span><span class="font-medium text-ink-2">Plan usage</span> · {{text}}</span>
+    </div>
+</template>
+
 <template id="usage_block">
     <div class="space-y-2.5">{{{rows}}}</div>
     <div class="mt-2 text-[10.5px] text-ink-3/80" title="Claude Code reports plan usage on each turn run from this app">{{source}}</div>

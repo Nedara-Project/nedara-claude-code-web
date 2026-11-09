@@ -165,7 +165,14 @@ export function createSidebar() {
             const windows = Object.entries(usage?.windows || {})
                 .filter(([, w]) => w.utilization != null || w.resets_at);
             if (!windows.length) {
-                section.addClass('hidden');
+                // Nothing measured yet: say where the numbers will come from.
+                section.html(render('usage_empty', {
+                    icon: icon('info', 'size-3.5 shrink-0'),
+                    text: store.config.read_only
+                        ? 'Plan usage is reported on turns run from this app, which is read-only.'
+                        : 'Plan usage appears after your next message from the web.',
+                }));
+                section.removeClass('hidden');
                 return;
             }
             const rows = windows.map(([name, w]) => {
