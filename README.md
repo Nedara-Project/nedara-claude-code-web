@@ -64,11 +64,22 @@ cannot carry: streamed text, run state and permission requests.
 
 ## Requirements
 
-- Linux or macOS (Windows untested), Python 3.11+.
-- Claude Code installed and signed in for the user running the app. If only Claude
-  Desktop is signed in, create a long-lived token with `claude setup-token` and point
-  `oauth_token_file` at it (see below).
-- `git` for the Changes pane.
+- Linux or macOS (Windows untested), Python 3.11+ with `venv`.
+- `git`, to clone the repository and for the Changes pane.
+- A way to sign in to Claude: a Claude account or an Anthropic API key (see
+  [Signing in to Claude](#signing-in-to-claude)).
+- The tools Claude will use in your projects (git, Python, Node, SSH…): Claude runs them
+  on this machine, as it would in a terminal.
+
+Not needed:
+
+- **Claude Desktop.** Without it the app works the same; you only lose Desktop's session
+  titles (titles then come from the transcripts) and, obviously, the live view of
+  Desktop's own sessions.
+- **The Claude Code CLI.** The `claude-agent-sdk` package ships one, used when no `claude`
+  is on `PATH`. Installing Claude Code is still handy for `claude --resume` in a terminal.
+- **Node.js.** The built CSS, the Socket.IO client and the font are committed; Node is only
+  needed to change the styles (see Development).
 
 ## Installation
 
@@ -102,16 +113,26 @@ Scan the QR code with any authenticator app (Aegis, 1Password, Google Authentica
 and type a code to confirm. Every browser is signed out when this changes.
 `totp disable` turns it off, and `revoke-sessions` signs every browser out.
 
-### Signing in the claude CLI
+### Signing in to Claude
 
-The app runs the `claude` CLI found on `PATH`, or the one bundled with the Agent SDK.
-That CLI needs a valid login of its own:
+The app runs the `claude` CLI found on `PATH`, or the one bundled with the Agent SDK. That
+CLI needs credentials of its own; Claude Desktop's sign-in is not shared with it. Pick one:
 
-- run `claude` once in a terminal and sign in, or
-- run `claude setup-token`, store the token in a file readable by you only
-  (`chmod 600`), and set `oauth_token_file` in `config.ini`.
+- **A long-lived token (Claude account).** Run `claude setup-token`, then paste the token on
+  the setup page, or store it in a file readable by you only (`chmod 600`) and point
+  `oauth_token_file` at it in `config.ini`. Without Claude Code installed, use the CLI
+  bundled with the SDK:
 
-If the CLI is not signed in, Claude answers "Failed to authenticate" in the transcript.
+  ```bash
+  "$(.venv/bin/python -c 'import claude_agent_sdk, pathlib; print(pathlib.Path(claude_agent_sdk.__file__).parent / "_bundled" / "claude")')" setup-token
+  ```
+
+- **The CLI's own login.** Run `claude` once in a terminal and sign in, as the user who runs
+  the app.
+- **An Anthropic API key.** Set `ANTHROPIC_API_KEY` in the app's environment (for the
+  systemd service: an `Environment=` line). Usage is then billed to that API key.
+
+If Claude is not signed in, it answers "Failed to authenticate" in the transcript.
 
 ## Running it as a service (systemd)
 
