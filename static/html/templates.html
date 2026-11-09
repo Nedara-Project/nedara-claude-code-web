@@ -1,0 +1,437 @@
+<!--
+    NedaraJS templates. Only {{var}} (escaped), {{{html}}} (trusted markup built
+    in JS or sanitised on the server) and {{#list}} loops are used: {{#if}}
+    relies on Function(), which the Content-Security-Policy forbids.
+-->
+
+<!-- ── Sidebar ─────────────────────────────────────────────────────────── -->
+<template id="sidebar_shell">
+    <div class="flex items-center gap-2.5 px-4 pt-4 pb-3">
+        <img src="/static/favicon.svg" alt="" class="size-7 rounded-[8px] shadow-sm">
+        <div class="min-w-0 flex-1">
+            <div class="text-[14px] font-semibold tracking-tight leading-tight">Claude Code</div>
+            <div class="text-[11.5px] text-ink-3 leading-tight">Web · v{{version}}</div>
+        </div>
+        <button class="icon-btn md:hidden" data-js-function="close" aria-label="Close sidebar">{{{iconClose}}}</button>
+    </div>
+    <div class="px-3 space-y-2.5">
+        <button class="btn-soft w-full h-9 justify-start px-3 text-[13.5px] {{newHidden}}" data-js-function="_onNew">
+            {{{iconNew}}}<span>New session</span><span class="ml-auto kbd">N</span>
+        </button>
+        <label class="relative block">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-ink-3">{{{iconSearch}}}</span>
+            <input id="session-search" class="field h-9 pl-9 text-[13.5px]" type="search" placeholder="Search sessions" autocomplete="off">
+        </label>
+        <div class="segmented w-full" role="tablist">
+            <button class="flex-1" role="tab" data-filter="recent" aria-selected="true">Recent</button>
+            <button class="flex-1" role="tab" data-filter="projects" aria-selected="false">Projects</button>
+            <button class="flex-1" role="tab" data-filter="archived" aria-selected="false">Archived</button>
+        </div>
+    </div>
+    <nav id="session-list" class="flex-1 overflow-y-auto px-2 pt-3 pb-4" aria-label="Sessions"></nav>
+    <div class="flex items-center gap-2 px-4 pt-2.5 pb-1 border-t border-hairline text-[11.5px] text-ink-3">
+        <a href="https://nedara.org" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 hover:text-ink-2 transition-colors" title="nedara.org">{{{nedaraMark}}}<span>A Nedara Project</span></a>
+        <a href="https://github.com/Nedara-Project" target="_blank" rel="noopener noreferrer" class="ml-auto hover:text-ink-2 transition-colors" title="Nedara Project on GitHub" aria-label="Nedara Project on GitHub">{{{iconGithub}}}</a>
+    </div>
+    <div class="flex items-center gap-1 px-3 pb-2.5 pt-0.5">
+        <button class="icon-btn" data-js-function="_onTheme" aria-label="Change theme" title="Theme">{{{iconTheme}}}</button>
+        <span id="theme-label" class="text-[12px] text-ink-3">{{themeLabel}}</span>
+        <div class="ml-auto flex items-center gap-1">
+            <button class="icon-btn" data-js-function="_onRevokeAll" aria-label="Sign out everywhere" title="Sign out everywhere">{{{iconShield}}}</button>
+            <button class="icon-btn" data-js-function="_onLogout" aria-label="Sign out" title="Sign out">{{{iconLogout}}}</button>
+        </div>
+    </div>
+</template>
+
+<template id="session_section">
+    <div class="px-3 pt-4 pb-1.5 text-[11.5px] font-semibold text-ink-3 tracking-wide first:pt-0 truncate" title="{{title}}">{{label}}</div>
+</template>
+
+<template id="session_row">
+    <a href="#/s/{{id}}" class="session-row" data-session="{{id}}" aria-current="{{current}}">
+        <div class="flex items-center gap-2 min-w-0">
+            <span class="text-[13.5px] font-medium text-ink truncate flex-1">{{title}}</span>
+            {{{status}}}
+        </div>
+        <div class="text-[12px] text-ink-3 truncate">{{meta}}</div>
+    </a>
+</template>
+
+<template id="session_empty">
+    <div class="px-4 py-10 text-center text-[13px] text-ink-3">{{text}}</div>
+</template>
+
+<!-- ── Conversation ────────────────────────────────────────────────────── -->
+<template id="conversation_shell">
+    <header class="glass absolute top-0 inset-x-0 z-20 h-14 flex items-center gap-2 px-3 md:px-5 border-b border-hairline">
+        <button class="icon-btn md:hidden" data-js-function="_onMenu" aria-label="Open sidebar">{{{iconMenu}}}</button>
+        <div id="conv-heading" class="min-w-0 flex-1"></div>
+        <div id="conv-actions" class="flex items-center gap-0.5"></div>
+    </header>
+    <div id="conv-scroll" class="flex-1 overflow-y-auto pt-14">
+        <div id="conv-body" class="mx-auto w-full max-w-[780px] px-4 md:px-8"></div>
+    </div>
+    <div id="conv-dock" class="relative z-10 mx-auto w-full max-w-[780px] px-3 md:px-8 pb-3 md:pb-5">
+        <div id="dock-jump" class="hidden absolute -top-12 left-1/2 -translate-x-1/2">
+            <button class="btn-soft glass shadow-card h-8" data-js-function="_onJump">{{{iconDown}}}<span>Latest</span></button>
+        </div>
+        <div id="dock-notices" class="space-y-2 mb-2"></div>
+        <div id="composer"></div>
+    </div>
+</template>
+
+<template id="conversation_heading">
+    <div class="flex flex-col min-w-0">
+        <h1 class="text-[14.5px] font-semibold tracking-tight truncate">{{title}}</h1>
+        <div class="flex items-center gap-1.5 text-[12px] text-ink-3 min-w-0">
+            <span class="truncate" title="{{cwd}}">{{folder}}</span>
+            {{{branch}}}
+            {{{status}}}
+        </div>
+    </div>
+</template>
+
+<template id="conversation_actions">
+    <button class="icon-btn" data-pane="changes" aria-pressed="{{changes}}" title="Changes">{{{iconDiff}}}</button>
+    <button class="icon-btn {{filesHidden}}" data-pane="files" aria-pressed="{{files}}" title="Files">{{{iconFolder}}}</button>
+    <button class="icon-btn" data-pane="info" aria-pressed="{{info}}" title="Session info">{{{iconInfo}}}</button>
+</template>
+
+<template id="welcome">
+    <div class="min-h-full flex flex-col items-center justify-center text-center py-16 fade-up">
+        <img src="/static/favicon.svg" alt="" class="size-14 mb-6 drop-shadow-sm">
+        <h2 class="text-[30px] md:text-[34px] font-semibold tracking-tight leading-tight">{{greeting}}</h2>
+        <p class="text-[15px] text-ink-2 mt-2 max-w-md">{{subtitle}}</p>
+    </div>
+</template>
+
+<template id="load_earlier">
+    <div class="flex justify-center pt-6">
+        <button class="btn-ghost" data-js-function="_onLoadEarlier">{{{icon}}}<span>Show earlier messages</span></button>
+    </div>
+</template>
+
+<template id="ev_user">
+    <div class="flex justify-end pt-6 fade-up" data-ev="{{id}}">
+        <div class="max-w-[85%] rounded-[20px] rounded-br-md bg-fill-strong/70 px-4 py-2.5 text-[15px] leading-[1.55] space-y-2">{{{body}}}</div>
+    </div>
+</template>
+
+<template id="ev_user_text">
+    <div class="whitespace-pre-wrap break-words">{{text}}</div>
+</template>
+
+<template id="ev_user_command">
+    <div class="font-mono text-[13.5px] text-accent-ink">{{text}}</div>
+</template>
+
+<template id="ev_user_paste">
+    <details class="group rounded-xl bg-surface/70 border border-hairline">
+        <summary class="flex items-center gap-2 px-3 h-9 text-[12.5px] font-medium text-ink-2 list-none">
+            {{{icon}}}<span>Pasted text</span><span class="text-ink-3">· {{lines}} lines</span>
+        </summary>
+        <div class="px-3 pb-3 text-[13px] whitespace-pre-wrap break-words max-h-80 overflow-y-auto text-ink-2">{{text}}</div>
+    </details>
+</template>
+
+<template id="ev_text">
+    <div class="prose-chat pt-5 fade-up" data-ev="{{id}}">{{{html}}}</div>
+</template>
+
+<template id="ev_thinking">
+    <details class="pt-4 group fade-up" data-ev="{{id}}">
+        <summary class="inline-flex items-center gap-1.5 text-[13px] text-ink-3 hover:text-ink-2 list-none">
+            {{{icon}}}<span>Thinking</span>
+        </summary>
+        <div class="mt-2 pl-5 border-l border-hairline-strong text-[13.5px] leading-relaxed text-ink-2 whitespace-pre-wrap">{{text}}</div>
+    </details>
+</template>
+
+<template id="ev_tool">
+    <div class="pt-1 first:pt-4 tool fade-up" data-tool="{{id}}" data-state="running">
+        <button class="tool-row" data-js-function="_onToggleTool" aria-expanded="false">
+            <span class="tool-icon text-ink-3 shrink-0">{{{icon}}}</span>
+            <span class="font-medium text-ink shrink-0">{{label}}</span>
+            <span class="text-ink-3 truncate min-w-0">{{summary}}</span>
+            <span class="tool-status ml-auto shrink-0">{{{status}}}</span>
+        </button>
+        <div class="tool-body hidden">{{{body}}}</div>
+    </div>
+</template>
+
+<template id="tool_section">
+    <div>
+        <div class="text-[11px] font-semibold uppercase tracking-wider text-ink-3 mb-1.5">{{title}}</div>
+        {{{content}}}
+    </div>
+</template>
+
+<template id="code_block">
+    <pre class="code-block {{cls}}">{{text}}</pre>
+</template>
+
+<template id="ev_plan">
+    <div class="pt-4 fade-up" data-ev="{{id}}">
+        <div class="card px-4 py-3.5">
+            <div class="flex items-center gap-2 text-[12.5px] font-semibold text-ink-2 mb-2">{{{icon}}}<span>{{title}}</span><span class="ml-auto text-ink-3 font-medium">{{progress}}</span></div>
+            <ol class="space-y-1.5">{{{items}}}</ol>
+        </div>
+    </div>
+</template>
+
+<template id="plan_item">
+    <li class="flex items-start gap-2.5 text-[13.5px] {{cls}}">
+        <span class="mt-[3px] shrink-0">{{{icon}}}</span><span>{{content}}</span>
+    </li>
+</template>
+
+<template id="ev_recap">
+    <div class="pt-5 fade-up" data-ev="{{id}}">
+        <div class="rounded-2xl bg-accent-soft px-4 py-3.5 text-[14px] leading-relaxed">
+            <div class="flex items-center gap-2 text-[12px] font-semibold text-accent-ink mb-1">{{{icon}}}<span>Summary</span></div>
+            <p class="text-ink">{{recap}}</p>
+            {{{ask}}}
+            {{{actions}}}
+        </div>
+    </div>
+</template>
+
+<template id="recap_actions">
+    <div class="recap-actions flex flex-wrap gap-2 mt-3">{{{buttons}}}</div>
+</template>
+
+<template id="recap_action">
+    <button class="{{cls}} h-8 max-w-full" data-js-function="_onRecapAction" data-message="{{message}}" title="{{message}}"><span class="truncate">{{label}}</span></button>
+</template>
+
+<template id="ev_notice">
+    <div class="flex justify-center pt-5 fade-up" data-ev="{{id}}">
+        <span class="chip {{cls}}">{{{icon}}}<span class="truncate">{{text}}</span></span>
+    </div>
+</template>
+
+<template id="ev_stream">
+    <div id="stream" class="pt-5">
+        <div id="stream-thinking" class="hidden text-[13px] text-ink-3 pb-2 shimmer">Thinking…</div>
+        <div id="stream-text" class="prose-chat whitespace-pre-wrap caret"></div>
+    </div>
+</template>
+
+<template id="working">
+    <div id="working" class="pt-5 pb-1 flex items-center gap-2 text-[13.5px]">
+        <span class="dot dot-busy"></span><span class="shimmer font-medium">{{text}}</span>
+    </div>
+</template>
+
+<!-- ── Dock: banners, permissions, questions, plan ─────────────────────── -->
+<template id="dock_banner">
+    <div class="flex items-center gap-2.5 rounded-full glass border border-hairline px-3.5 py-1.5 text-[12.5px] w-fit max-w-full mx-auto fade-up">
+        <span class="text-ink-3 shrink-0">{{{icon}}}</span>
+        <div class="text-ink-2 leading-relaxed">{{{html}}}</div>
+    </div>
+</template>
+
+<template id="dock_plan">
+    <details class="group rounded-2xl glass border border-hairline shadow-card fade-up" id="dock-plan">
+        <summary class="flex items-center gap-2 px-4 h-10 text-[13px] list-none">
+            {{{icon}}}<span class="font-medium truncate">{{current}}</span>
+            <span class="ml-auto text-ink-3 shrink-0">{{progress}}</span>
+            <span class="text-ink-3 transition-transform duration-200 group-open:rotate-180">{{{chevron}}}</span>
+        </summary>
+        <ol class="px-4 pb-3 space-y-1.5">{{{items}}}</ol>
+    </details>
+</template>
+
+<template id="permission_card">
+    <div class="card shadow-float p-4 fade-up" data-request="{{request_id}}">
+        <div class="flex items-start gap-3">
+            <span class="flex items-center justify-center size-8 rounded-full bg-accent-soft text-accent-ink shrink-0">{{{icon}}}</span>
+            <div class="min-w-0 flex-1">
+                <div class="text-[14px] font-semibold leading-snug">{{title}}</div>
+                <div class="text-[13px] text-ink-2 mt-0.5">{{description}}</div>
+            </div>
+        </div>
+        <div class="mt-3 space-y-2">{{{body}}}</div>
+        <div class="mt-4 flex flex-wrap items-center justify-end gap-2">
+            <button class="btn-ghost" data-js-function="_onPermission" data-behavior="deny">Deny</button>
+            <button class="btn-soft {{rememberHidden}}" data-js-function="_onPermission" data-behavior="allow" data-remember="1">Allow for this session</button>
+            <button class="btn-primary" data-js-function="_onPermission" data-behavior="allow">Allow once</button>
+        </div>
+    </div>
+</template>
+
+<template id="question_card">
+    <form class="card shadow-float p-4 space-y-4 fade-up" data-request="{{request_id}}" data-question-form>
+        {{{questions}}}
+        <div class="flex items-center justify-end gap-2">
+            <button type="button" class="btn-ghost" data-js-function="_onPermission" data-behavior="deny">Skip</button>
+            <button type="submit" class="btn-primary">Answer</button>
+        </div>
+    </form>
+</template>
+
+<template id="question_block">
+    <fieldset class="space-y-2" data-question="{{question}}" data-multi="{{multi}}">
+        <legend class="text-[14px] font-semibold mb-2">{{question}}</legend>
+        <div class="grid gap-1.5">{{{options}}}</div>
+        <input class="field h-9 text-[13.5px]" type="text" placeholder="Other answer (optional)" data-other>
+    </fieldset>
+</template>
+
+<template id="question_option">
+    <label class="flex items-start gap-3 rounded-xl border border-hairline px-3 py-2.5 hover:bg-fill has-[:checked]:border-accent has-[:checked]:bg-accent-soft transition-colors">
+        <input type="{{type}}" name="{{name}}" value="{{label}}" class="mt-1 accent-[var(--accent)]">
+        <span class="min-w-0">
+            <span class="block text-[13.5px] font-medium">{{label}}</span>
+            <span class="block text-[12.5px] text-ink-2">{{description}}</span>
+        </span>
+    </label>
+</template>
+
+<!-- ── Composer ────────────────────────────────────────────────────────── -->
+<template id="composer_shell">
+    <form id="composer-form" class="relative rounded-[22px] bg-surface border border-hairline shadow-float transition-shadow focus-within:border-hairline-strong">
+        <textarea id="composer-input" rows="1" class="block w-full resize-none bg-transparent px-4 pt-3.5 pb-1 text-[15px] leading-[1.5] outline-none placeholder:text-ink-3 max-h-[40vh]" placeholder="{{placeholder}}"></textarea>
+        <div class="flex items-center gap-1 px-2 pb-2 pt-1 min-w-0">
+            <button type="button" id="composer-folder" class="btn-ghost h-7 px-2.5 text-[12px] max-w-[45%] {{folderHidden}}" data-js-function="_onPickFolder" title="Working folder">{{{iconFolder}}}<span class="truncate">{{folder}}</span></button>
+            <button type="button" class="picker max-w-[34%]" data-picker="model" aria-haspopup="listbox" aria-expanded="false" title="Model"><span class="truncate"></span>{{{chevron}}}</button>
+            <button type="button" class="picker hidden sm:inline-flex" data-picker="effort" aria-haspopup="listbox" aria-expanded="false" title="Effort"><span class="truncate"></span>{{{chevron}}}</button>
+            <button type="button" class="picker hidden sm:inline-flex" data-picker="mode" aria-haspopup="listbox" aria-expanded="false" title="Permission mode"><span class="truncate"></span>{{{chevron}}}</button>
+            <button type="submit" id="composer-send" class="ml-auto shrink-0 inline-flex items-center justify-center size-8 rounded-full bg-ink text-app transition-all duration-200 ease-apple hover:opacity-85 active:scale-95 disabled:opacity-25" aria-label="Send">{{{iconSend}}}</button>
+        </div>
+    </form>
+    <p class="hidden md:block text-center text-[11.5px] text-ink-3 mt-2">{{hint}}</p>
+</template>
+
+<template id="picker_menu">
+    <div class="picker-menu fade-up" role="listbox" aria-label="{{title}}">
+        <div class="px-3 pt-1.5 pb-1 text-[11px] font-semibold uppercase tracking-wider text-ink-3">{{title}}</div>
+        {{{options}}}
+    </div>
+</template>
+
+<template id="picker_option">
+    <button type="button" class="picker-option" role="option" data-value="{{value}}" aria-selected="{{selected}}">
+        <span class="min-w-0 flex-1">
+            <span class="block truncate">{{label}}</span>
+            <span class="block text-[11.5px] text-ink-3 font-normal leading-snug {{descriptionHidden}}">{{description}}</span>
+        </span>
+        <span class="picker-check">{{{check}}}</span>
+    </button>
+</template>
+
+<!-- ── Side pane ───────────────────────────────────────────────────────── -->
+<template id="pane_shell">
+    <div class="flex items-center gap-2 h-14 px-3 border-b border-hairline shrink-0">
+        <div class="segmented" role="tablist">
+            <button role="tab" data-tab="changes" aria-selected="{{changes}}">Changes</button>
+            <button role="tab" data-tab="files" aria-selected="{{files}}" class="{{filesHidden}}">Files</button>
+            <button role="tab" data-tab="info" aria-selected="{{info}}">Info</button>
+        </div>
+        <button class="icon-btn ml-auto" data-js-function="_onRefresh" title="Refresh">{{{iconRefresh}}}</button>
+        <button class="icon-btn" data-js-function="close" title="Close">{{{iconClose}}}</button>
+    </div>
+    <div id="pane-body" class="flex-1 overflow-y-auto p-4"></div>
+</template>
+
+<template id="pane_message">
+    <div class="h-full flex flex-col items-center justify-center text-center px-6 text-ink-3">
+        <span class="mb-3">{{{icon}}}</span>
+        <p class="text-[13.5px]">{{text}}</p>
+    </div>
+</template>
+
+<template id="pane_changes">
+    <div class="space-y-4">
+        <div class="flex items-center gap-2 text-[13px]">
+            {{{iconBranch}}}<span class="font-medium">{{branch}}</span>
+            <span class="text-ink-3 truncate" title="{{root}}">{{root}}</span>
+        </div>
+        <ul class="card divide-y divide-hairline overflow-hidden">{{{files}}}</ul>
+        {{{diff}}}
+    </div>
+</template>
+
+<template id="change_row">
+    <li class="flex items-center gap-2.5 px-3 h-9 text-[13px]">
+        <span class="w-5 text-center font-mono text-[11.5px] font-semibold {{cls}}">{{status}}</span>
+        <span class="truncate font-mono text-[12.5px]" title="{{path}}">{{path}}</span>
+    </li>
+</template>
+
+<template id="pane_files">
+    <div class="space-y-3">
+        <div class="flex items-center gap-1 text-[12.5px] text-ink-2 flex-wrap">{{{crumbs}}}</div>
+        <ul class="card divide-y divide-hairline overflow-hidden">{{{entries}}}</ul>
+    </div>
+</template>
+
+<template id="file_row">
+    <li>
+        <button class="w-full flex items-center gap-2.5 px-3 h-9 text-[13px] text-left hover:bg-fill {{cls}}" data-js-function="_onFileClick" data-path="{{path}}" data-dir="{{dir}}">
+            <span class="text-ink-3">{{{icon}}}</span><span class="truncate">{{name}}</span>
+        </button>
+    </li>
+</template>
+
+<template id="crumb">
+    <button class="rounded-md px-1.5 py-0.5 hover:bg-fill hover:text-ink" data-js-function="_onFileClick" data-path="{{path}}" data-dir="1">{{name}}</button><span class="text-ink-3">/</span>
+</template>
+
+<template id="pane_file">
+    <div class="space-y-3">
+        <div class="flex items-center gap-2">
+            <button class="icon-btn" data-js-function="_onFileClick" data-path="{{parent}}" data-dir="1" title="Back">{{{iconBack}}}</button>
+            <span class="font-mono text-[12.5px] truncate" title="{{path}}">{{path}}</span>
+            <span class="ml-auto text-[12px] text-ink-3 shrink-0">{{size}}</span>
+        </div>
+        {{{content}}}
+    </div>
+</template>
+
+<template id="pane_info">
+    <dl class="card divide-y divide-hairline text-[13px]">{{{rows}}}</dl>
+</template>
+
+<template id="info_row">
+    <div class="flex items-start gap-4 px-4 py-3">
+        <dt class="w-28 shrink-0 text-ink-3">{{label}}</dt>
+        <dd class="min-w-0 flex-1 break-all {{cls}}">{{value}}</dd>
+    </div>
+</template>
+
+<!-- ── Dialogs and toasts ──────────────────────────────────────────────── -->
+<template id="folder_dialog">
+    <div class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-6" data-dialog>
+        <div class="absolute inset-0 bg-black/25 backdrop-blur-[3px]" data-js-function="_onDismiss"></div>
+        <div class="relative w-full sm:max-w-lg max-h-[80vh] flex flex-col rounded-t-3xl sm:rounded-3xl bg-surface shadow-float border border-hairline fade-up">
+            <div class="flex items-center gap-2 px-5 pt-5 pb-3">
+                <h2 class="text-[17px] font-semibold tracking-tight flex-1">Choose a folder</h2>
+                <button class="icon-btn" data-js-function="_onDismiss" aria-label="Close">{{{iconClose}}}</button>
+            </div>
+            <div class="px-5 pb-3 flex items-center gap-2">
+                <button class="icon-btn {{upHidden}}" data-js-function="_onFolderOpen" data-path="{{parent}}" aria-label="Parent folder">{{{iconBack}}}</button>
+                <span class="font-mono text-[12.5px] text-ink-2 truncate" title="{{path}}">{{path}}</span>
+            </div>
+            <ul class="flex-1 overflow-y-auto px-3 pb-2">{{{folders}}}</ul>
+            <div class="flex items-center justify-end gap-2 px-5 py-4 border-t border-hairline">
+                <button class="btn-ghost" data-js-function="_onDismiss">Cancel</button>
+                <button class="btn-primary" data-js-function="_onFolderChoose" data-path="{{path}}">Use this folder</button>
+            </div>
+        </div>
+    </div>
+</template>
+
+<template id="folder_row">
+    <li>
+        <button class="w-full flex items-center gap-3 rounded-xl px-3 h-10 text-[13.5px] text-left hover:bg-fill" data-js-function="_onFolderOpen" data-path="{{path}}">
+            <span class="text-accent">{{{icon}}}</span><span class="truncate">{{name}}</span>
+        </button>
+    </li>
+</template>
+
+<template id="toast">
+    <div class="glass border border-hairline shadow-float rounded-2xl px-4 py-2.5 text-[13px] flex items-center gap-2 fade-up max-w-[90vw]">
+        <span class="{{cls}}">{{{icon}}}</span><span>{{text}}</span>
+    </div>
+</template>

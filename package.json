@@ -1,0 +1,16 @@
+{
+  "name": "nedara-claude-code-web",
+  "private": true,
+  "description": "Build tooling for the front-end assets (Tailwind CSS and vendored libraries).",
+  "scripts": {
+    "build": "tailwindcss -i static/css/src/app.css -o static/css/app.css --minify",
+    "watch": "tailwindcss -i static/css/src/app.css -o static/css/app.css --watch",
+    "vendor": "node tools/vendor.mjs"
+  },
+  "devDependencies": {
+    "@fontsource-variable/inter": "5.2.8",
+    "@tailwindcss/cli": "4.3.5",
+    "socket.io-client": "4.8.1",
+    "tailwindcss": "4.3.5"
+  }
+}

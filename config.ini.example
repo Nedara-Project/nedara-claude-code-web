@@ -1,0 +1,74 @@
+; Nedara Claude Code Web — example configuration.
+; Copy to config.ini and adapt. Every key is optional: the defaults give a
+; local-only, password-protected instance.
+
+[server]
+; Listen on the loopback interface only. To reach the app from another device,
+; keep this and put a TLS reverse proxy or a VPN in front of it.
+host = 127.0.0.1
+port = 5070
+; Required before binding to anything other than localhost. Setting it says:
+; "this port is only reachable through HTTPS / a private network".
+allow_remote = 0
+; 1 when a reverse proxy (nginx, Caddy, Traefik) sits in front: trust its
+; X-Forwarded-For / X-Forwarded-Proto headers (one hop) and send secure cookies.
+behind_proxy = 0
+; Send the session cookie over HTTPS only. Defaults to behind_proxy.
+secure_cookies = 0
+; Hours before a browser has to sign in again.
+session_hours = 12
+; Extra origins allowed to open the live connection, comma separated
+; (e.g. https://claude.example.com). Empty = same origin only.
+allowed_origins =
+debug = 0
+
+[claude]
+; Where Claude Code keeps its sessions (default: ~/.claude).
+claude_dir =
+; Claude Desktop's data folder, for session titles and archive flags.
+; Default: ~/.config/Claude (Linux), ~/Library/Application Support/Claude (macOS),
+; %APPDATA%\Claude (Windows).
+desktop_dir =
+; Path to the claude CLI. Default: found on PATH. Without it the app is read-only.
+claude_cli =
+; File holding a long-lived token from `claude setup-token` (chmod 600).
+; Needed when the claude CLI is not signed in for this user, for example in a
+; container or when only Claude Desktop is signed in. Empty = the CLI's own login.
+oauth_token_file =
+; Where the app keeps its password hash, secret key and audit log (default: ./data).
+data_dir =
+; Folders whose sessions are shown and where new sessions may start,
+; comma separated. Default: your home folder.
+allowed_roots =
+; 1 = also list sessions run by scripts through the Agent SDK (bots, CI...).
+; Sessions started from this app are always listed.
+show_automated = 0
+
+[agent]
+; 1 = follow sessions live but never send anything to Claude.
+read_only = 0
+; Permission modes offered in the composer. bypassPermissions lets Claude run
+; anything without asking: only add it if you understand the risk.
+allowed_permission_modes = default, acceptEdits, plan, auto
+default_permission_mode = default
+; Models offered in the composer (empty value = the CLI default).
+models = claude-opus-5-5, claude-sonnet-5-5, claude-haiku-5-5, claude-fable-5-1
+default_model =
+; Seconds to wait for your answer to a permission request before denying it.
+permission_timeout = 600
+; Close the Claude process of a session idle for this many minutes.
+idle_disconnect_minutes = 30
+
+[files]
+; Read-only file browser in the side pane.
+file_viewer = 1
+; Larger files are cut.
+file_max_kb = 512
+; Extra file patterns never shown, comma separated (added to the built-in list:
+; .env, keys, certificates, SSH keys, .netrc, .pgpass, credentials...).
+denylist =
+
+[security]
+; Failed sign-ins allowed per client before a lockout.
+max_login_attempts = 5
+lockout_minutes = 15

@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block head %}
+    <meta name="csrf-token" content="{{ csrf }}">
+    <meta name="app-version" content="{{ version }}">
+    <script type="module" src="{{ url_for('static', filename='js/app.js', v=version) }}"></script>
+{% endblock %}
+{% block body_class %}h-dvh overflow-hidden{% endblock %}
+{% block body %}
+<div class="flex h-dvh">
+    <div id="scrim" class="fixed inset-0 z-30 bg-black/25 backdrop-blur-[2px] hidden md:hidden"></div>
+    <aside id="sidebar" class="glass fixed md:static inset-y-0 left-0 z-40 w-[296px] max-w-[85vw] shrink-0 flex flex-col border-r border-hairline -translate-x-full md:translate-x-0 transition-transform duration-300 ease-apple"></aside>
+    <main id="conversation" class="relative flex-1 min-w-0 flex flex-col"></main>
+    <aside id="pane" class="hidden fixed xl:static inset-y-0 right-0 z-40 xl:z-auto w-full sm:w-[460px] xl:w-[480px] 2xl:w-[560px] shrink-0 flex-col bg-surface xl:bg-surface-2 border-l border-hairline shadow-float xl:shadow-none"></aside>
+</div>
+<div id="dialog-root"></div>
+<div id="toasts" class="fixed top-4 left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center gap-2 pointer-events-none"></div>
+{% endblock %}

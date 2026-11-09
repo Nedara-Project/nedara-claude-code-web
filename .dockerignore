@@ -1,0 +1,8 @@
+.git
+.venv
+node_modules
+data
+config.ini
+__pycache__
+*.pyc
+.claude

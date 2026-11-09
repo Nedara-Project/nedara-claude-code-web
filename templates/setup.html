@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Set up · Claude Code Web{% endblock %}
+{% block body_class %}min-h-dvh flex items-start sm:items-center justify-center px-4 py-10{% endblock %}
+{% block body %}
+<main class="w-full max-w-[460px] fade-up">
+    <div class="flex flex-col items-center text-center mb-8">
+        <img src="{{ url_for('static', filename='favicon.svg') }}" alt="" class="size-14 mb-5 drop-shadow-sm">
+        <h1 class="text-[26px] font-semibold tracking-tight">Welcome</h1>
+        <p class="text-[14px] text-ink-2 mt-1.5 max-w-sm">Secure this instance before anything else. It takes a minute and is only asked once.</p>
+    </div>
+
+    <form method="post" action="{{ url_for('setup') }}" class="card divide-y divide-hairline" autocomplete="off">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+
+        {% if errors %}
+        <div class="px-6 py-4 space-y-1" role="alert">
+            {% for error in errors %}
+            <p class="text-[13px] text-bad">{{ error }}</p>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <section class="px-6 py-5 space-y-3">
+            <div>
+                <h2 class="text-[15px] font-semibold tracking-tight">Setup code</h2>
+                <p class="text-[13px] text-ink-2 mt-0.5">Printed in the server log when the app started: the terminal, <span class="font-mono text-[12px]">journalctl</span> or <span class="font-mono text-[12px]">docker compose logs</span>. It proves you run this server.</p>
+            </div>
+            <input class="field font-mono tracking-[0.25em] text-center uppercase" type="text" name="setup_code" value="{{ request.form.get('setup_code', '') }}" placeholder="XXXX-XXXX" maxlength="9" required autofocus spellcheck="false">
+        </section>
+
+        <section class="px-6 py-5 space-y-3">
+            <div>
+                <h2 class="text-[15px] font-semibold tracking-tight">Master password</h2>
+                <p class="text-[13px] text-ink-2 mt-0.5">Whoever knows it can make Claude run commands on this machine. At least 12 characters; a passphrase is ideal.</p>
+            </div>
+            <input class="field" type="password" name="password" placeholder="Master password" autocomplete="new-password" minlength="12" required>
+            <input class="field" type="password" name="password_confirm" placeholder="Repeat it" autocomplete="new-password" minlength="12" required>
+        </section>
+
+        <details class="group px-6 py-5" {% if totp_open %}open{% endif %}>
+            <summary class="flex items-center gap-3 list-none">
+                <div class="flex-1">
+                    <h2 class="text-[15px] font-semibold tracking-tight">Two-factor authentication <span class="chip ml-1 align-middle !bg-accent-soft !text-accent-ink">Recommended</span></h2>
+                    <p class="text-[13px] text-ink-2 mt-0.5">A code from your phone on every sign-in.</p>
+                </div>
+                <svg class="size-4 text-ink-3 transition-transform duration-200 group-open:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            </summary>
+            <div class="mt-4 space-y-3">
+                <p class="text-[13px] text-ink-2">Scan this code with Aegis, 1Password, Google Authenticator or any TOTP app, then type the 6 digits it shows.</p>
+                {% if qr %}
+                <div class="flex justify-center">
+                    <img src="{{ qr }}" alt="QR code for the authenticator app" class="size-44 rounded-2xl bg-white p-2.5 border border-hairline">
+                </div>
+                {% endif %}
+                <p class="text-[12px] text-ink-3 text-center">Or enter this key by hand: <span class="font-mono text-ink-2 select-all break-all">{{ totp_secret }}</span></p>
+                <input class="field tracking-[0.3em] text-center font-medium" type="text" name="code" placeholder="6-digit code" inputmode="numeric" pattern="[0-9 ]{6,7}" autocomplete="one-time-code">
+                <p class="text-[12px] text-ink-3">Leave it empty to skip. You can turn it on later with <span class="font-mono">python3 app.py totp enable</span>.</p>
+            </div>
+        </details>
+
+        <details class="group px-6 py-5" {% if not token_configured and not cli_found %}open{% endif %}>
+            <summary class="flex items-center gap-3 list-none">
+                <div class="flex-1">
+                    <h2 class="text-[15px] font-semibold tracking-tight">Claude sign-in <span class="text-ink-3 font-normal text-[13px]">· optional</span></h2>
+                    <p class="text-[13px] text-ink-2 mt-0.5">Only if the <span class="font-mono text-[12px]">claude</span> CLI is not signed in for this user (containers, Desktop-only setups).</p>
+                </div>
+                <svg class="size-4 text-ink-3 transition-transform duration-200 group-open:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            </summary>
+            <div class="mt-4 space-y-3">
+                <p class="text-[13px] text-ink-2">Run <span class="font-mono text-[12px] bg-fill rounded-md px-1.5 py-0.5">claude setup-token</span> in a terminal and paste the token here. It is stored in <span class="font-mono text-[12px]">data/claude_token</span>, readable by this user only.</p>
+                <input class="field font-mono text-[13px]" type="password" name="claude_token" placeholder="sk-ant-…" autocomplete="off" spellcheck="false">
+            </div>
+        </details>
+
+        <div class="px-6 py-5">
+            <button type="submit" class="btn-primary w-full h-11 text-[14.5px]">Secure and continue</button>
+        </div>
+    </form>
+    {% include "_nedara_footer.html" %}
+</main>
+{% endblock %}

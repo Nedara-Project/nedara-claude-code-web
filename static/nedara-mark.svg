@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="currentColor">
+  <!-- Nedara Project monogram (leaf + two blocks), geometry from nedara-org/tools/make_logo.py. -->
+  <path d="M0 0A48.4 100 0 0 1 48.4 100A48.4 100 0 0 1 0 0Z"/>
+  <rect x="51" y="0" width="49" height="48.1"/>
+  <rect x="51" y="51.9" width="49" height="48.1"/>
+</svg>

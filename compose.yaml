@@ -1,0 +1,45 @@
+# Nedara Claude Code Web — Docker Compose / Podman Compose.
+#
+# Before the first start:
+#   cp config.ini.example config.ini
+#   echo "UID=$(id -u)" > .env; echo "GID=$(id -g)" >> .env
+#     (rootless Docker: use UID=0 and GID=0 — root in the container is you on the host)
+#   echo "HOME=$HOME" >> .env; echo "PROJECTS=$HOME/dev" >> .env
+#   docker compose build
+#   docker compose up -d && docker compose logs nccw   # one-time setup code
+#
+# Your sessions record absolute folder paths, so ~/.claude and your projects are
+# mounted at the same paths as on the host, and HOME is the same too.
+services:
+  nccw:
+    build:
+      context: .
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
+    image: nedara-claude-code-web:local
+    user: "${UID:-1000}:${GID:-1000}"
+    # Rootless Podman: keep your own uid inside the container.
+    # userns_mode: keep-id
+    environment:
+      HOME: ${HOME}
+      # Binding 0.0.0.0 inside the container is fine: the port below is only
+      # published on the host's loopback interface.
+      NCCW_ALLOW_REMOTE: "1"
+    ports:
+      - "127.0.0.1:5070:5070"
+    # Lets the app see the Claude Desktop / CLI processes running on the host,
+    # so it never writes into a session another process holds.
+    pid: host
+    volumes:
+      - ./config.ini:/app/config.ini:ro
+      - ./data:/app/data
+      - ${HOME}/.claude:${HOME}/.claude
+      - ${HOME}/.config/Claude:${HOME}/.config/Claude:ro
+      - ${PROJECTS:-${HOME}/dev}:${PROJECTS:-${HOME}/dev}
+    restart: unless-stopped
+    read_only: false
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
